@@ -5,6 +5,7 @@ import { X, Sparkles, Check, Users, Tag, Plus, Copy } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 import CustomDatePicker from './CustomDatePicker';
 import { PRESET_TAGS, getTagStyle } from '@/lib/tags';
+import { formatTaskShareText } from '@/lib/formatTask';
 
 const PRIORITY_OPTIONS = [
   { value: 'BAIXA', label: '🟢 Baixa' },
@@ -53,8 +54,16 @@ function TaskModalForm({
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopyTaskReference = () => {
-    if (!taskToEdit) return;
-    const text = `[Demanda] ${taskToEdit.title} (Prioridade: ${taskToEdit.priority || 'Média'})`;
+    const currentData = {
+      title,
+      description,
+      tags,
+      priority,
+      status,
+      due_date: dueDate,
+      assignee_ids: assigneeIds
+    };
+    const text = formatTaskShareText(currentData, teamUsers);
     navigator.clipboard?.writeText(text);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 1800);

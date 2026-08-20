@@ -14,6 +14,7 @@ import {
   Check
 } from 'lucide-react';
 import { getTagStyle } from '@/lib/tags';
+import { formatTaskShareText } from '@/lib/formatTask';
 
 const PRIORITY_THEMES = {
   URGENTE: {
@@ -94,7 +95,7 @@ export default function TaskCard({
 
   const handleCopyTask = (e) => {
     e.stopPropagation();
-    const textToCopy = `[Demanda] ${task.title} (Prioridade: ${task.priority || 'Média'})`;
+    const textToCopy = formatTaskShareText(task);
     navigator.clipboard?.writeText(textToCopy);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 1800);
