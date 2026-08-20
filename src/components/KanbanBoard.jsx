@@ -18,7 +18,8 @@ export default function KanbanBoard({
   onEditTask, 
   onDeleteTask, 
   onUpdateTaskStatus,
-  onOpenNewTaskModal 
+  onOpenNewTaskModal,
+  onCopyTask
 }) {
   const [activeDropStatus, setActiveDropStatus] = useState(null);
   const [activeDraggingTaskId, setActiveDraggingTaskId] = useState(null);
@@ -54,6 +55,7 @@ export default function KanbanBoard({
             onDeleteTask={onDeleteTask}
             onUpdateTaskStatus={onUpdateTaskStatus}
             onOpenNewTaskModal={onOpenNewTaskModal}
+            onCopyTask={onCopyTask}
           />
         );
       })}

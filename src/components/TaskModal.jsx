@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Check, Users, Tag, Plus } from 'lucide-react';
+import { X, Sparkles, Check, Users, Tag, Plus, Copy } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 import CustomDatePicker from './CustomDatePicker';
 import { PRESET_TAGS, getTagStyle } from '@/lib/tags';
@@ -50,6 +50,15 @@ function TaskModalForm({
   const [customTagInput, setCustomTagInput] = useState('');
   const [prUrl, setPrUrl] = useState(taskToEdit?.pr_url || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopyTaskReference = () => {
+    if (!taskToEdit) return;
+    const text = `[Demanda] ${taskToEdit.title} (Prioridade: ${taskToEdit.priority || 'Média'})`;
+    navigator.clipboard?.writeText(text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 1800);
+  };
 
   const projectOptions = projects.map((p) => ({
     value: p.id,
@@ -111,13 +120,26 @@ function TaskModalForm({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-white dark:bg-[#131C31] w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-200 max-h-[90vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          aria-label="Fechar modal"
-          className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="absolute top-4 right-4 flex items-center gap-1">
+          {taskToEdit && (
+            <button
+              type="button"
+              onClick={handleCopyTaskReference}
+              title={isCopied ? "Copiado!" : "Copiar referência da demanda"}
+              aria-label="Copiar referência da demanda"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              {isCopied ? <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-4 h-4" />}
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            aria-label="Fechar modal"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         <div className="flex items-center gap-2.5 mb-5">
           <div className="w-8 h-8 rounded-lg bg-[#F7941D]/15 border border-[#F7941D]/30 flex items-center justify-center text-[#d97706] dark:text-amber-400">

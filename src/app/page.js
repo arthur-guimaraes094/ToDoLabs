@@ -16,6 +16,7 @@ const TeamModal = dynamic(() => import('@/components/TeamModal'), { ssr: false }
 const ConfirmModal = dynamic(() => import('@/components/ConfirmModal'), { ssr: false });
 const CommandPalette = dynamic(() => import('@/components/CommandPalette'), { ssr: false });
 const ActivityDrawer = dynamic(() => import('@/components/ActivityDrawer'), { ssr: false });
+const ShortcutsModal = dynamic(() => import('@/components/ShortcutsModal'), { ssr: false });
 
 const PRIORITY_WEIGHTS = {
   URGENTE: 4,
@@ -73,6 +74,10 @@ export default function Home() {
   // Command Palette State
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
+  // Shortcuts Modal State & Overdue Filter State
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
+  const [filterOverdueOnly, setFilterOverdueOnly] = useState(false);
+
   // Modal States
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
@@ -113,7 +118,7 @@ export default function Home() {
     }
   }, [isDarkMode]);
 
-  const handleToggleDarkMode = () => {
+  const handleToggleDarkMode = useCallback(() => {
     const nextTheme = isDarkMode ? 'light' : 'dark';
     localStorage.setItem('todolabs_theme', nextTheme);
     if (nextTheme === 'dark') {
@@ -122,7 +127,50 @@ export default function Home() {
       document.documentElement.classList.remove('dark');
     }
     window.dispatchEvent(new Event('storage'));
-  };
+  }, [isDarkMode]);
+
+  // Global Keyboard Shortcuts (Keyboard-First UX)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const target = e.target;
+      const tagName = target?.tagName?.toLowerCase();
+      const isInput = tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target?.isContentEditable;
+
+      if (e.key === 'Escape') {
+        setIsTaskModalOpen(false);
+        setIsProjectModalOpen(false);
+        setIsTeamModalOpen(false);
+        setIsCommandPaletteOpen(false);
+        setIsActivityDrawerOpen(false);
+        setIsShortcutsModalOpen(false);
+        return;
+      }
+
+      if (isInput) return;
+
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        setTaskToEdit(null);
+        setInitialTaskStatus('IDEIAS_BACKLOG');
+        setIsTaskModalOpen(true);
+      } else if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        setViewMode((prev) => (prev === 'fan' ? 'grid' : 'fan'));
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault();
+        handleToggleDarkMode();
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setIsShortcutsModalOpen((prev) => !prev);
+      } else if (e.key === '/' || e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleToggleDarkMode]);
 
   const checkHealth = async () => {
     try {
@@ -625,6 +673,25 @@ export default function Home() {
     });
   }, [safeProjects, safeTasks]);
 
+  // Dynamic Team User Task Counts com useMemo
+  const teamUsersWithCounts = useMemo(() => {
+    return safeTeamUsers.map((user) => {
+      const count = safeTasks.filter((t) => {
+        const hasAssigneeId = Array.isArray(t.assignee_ids) && t.assignee_ids.includes(user.id);
+        const isAssignedTo = t.assigned_to_id === user.id;
+        const hasInAssignees = Array.isArray(t.assignees) && t.assignees.some((a) => a.id === user.id);
+        return hasAssigneeId || isAssignedTo || hasInAssignees;
+      }).length;
+      return { ...user, task_count: count };
+    });
+  }, [safeTeamUsers, safeTasks]);
+
+  // Overdue Tasks Count com useMemo
+  const overdueCount = useMemo(() => {
+    const now = new Date();
+    return safeTasks.filter((t) => t.due_date && new Date(t.due_date) < now && t.status !== 'CONCLUIDA').length;
+  }, [safeTasks]);
+
   // Dynamic Available Tags from safeTasks com useMemo
   const availableTags = useMemo(() => {
     return Array.from(
@@ -636,6 +703,7 @@ export default function Home() {
 
   // Filter & Sort Tasks com useMemo
   const filteredTasks = useMemo(() => {
+    const now = new Date();
     const list = safeTasks.filter((t) => {
       const matchesProject = activeProjectId ? t.project_id === activeProjectId : true;
       const matchesSearch = deferredSearchTerm.trim() === '' || 
@@ -651,8 +719,10 @@ export default function Home() {
       const matchesTag = selectedTag && selectedTag !== 'ALL'
         ? Array.isArray(t.tags) && t.tags.includes(selectedTag)
         : true;
+      const isOverdue = t.due_date && new Date(t.due_date) < now && t.status !== 'CONCLUIDA';
+      const matchesOverdue = filterOverdueOnly ? isOverdue : true;
       
-      return matchesProject && matchesSearch && matchesPriority && matchesAssignee && matchesTag;
+      return matchesProject && matchesSearch && matchesPriority && matchesAssignee && matchesTag && matchesOverdue;
     });
 
     return [...list].sort((a, b) => {
@@ -679,7 +749,7 @@ export default function Home() {
       // Default: Created at DESC
       return new Date(b.created_at || 0) - new Date(a.created_at || 0);
     });
-  }, [safeTasks, activeProjectId, deferredSearchTerm, selectedPriority, selectedAssigneeId, selectedTag, sortBy]);
+  }, [safeTasks, activeProjectId, deferredSearchTerm, selectedPriority, selectedAssigneeId, selectedTag, filterOverdueOnly, sortBy]);
 
   const activeProject = useMemo(() => {
     return safeProjects.find((p) => p.id === activeProjectId);
@@ -688,6 +758,10 @@ export default function Home() {
   const activeAssignee = useMemo(() => {
     return safeTeamUsers.find((u) => u.id === selectedAssigneeId);
   }, [safeTeamUsers, selectedAssigneeId]);
+
+  const handleCopyTask = (task) => {
+    showToast(`✓ Referência de "${task.title?.slice(0, 30)}..." copiada!`, 'info');
+  };
 
   // CSV Export Handler
   const handleExportCSV = () => {
@@ -756,7 +830,7 @@ export default function Home() {
         onSelectProject={(id) => setActiveProjectId(id)}
         onOpenNewProjectModal={handleOpenNewProjectModal}
         onEditProjectModal={handleOpenEditProjectModal}
-        teamUsers={safeTeamUsers}
+        teamUsers={teamUsersWithCounts}
         selectedAssigneeId={selectedAssigneeId}
         onSelectAssignee={setSelectedAssigneeId}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
@@ -775,6 +849,9 @@ export default function Home() {
           selectedTag={selectedTag}
           onSelectTag={setSelectedTag}
           availableTags={availableTags}
+          overdueCount={overdueCount}
+          filterOverdueOnly={filterOverdueOnly}
+          onToggleOverdueFilter={() => setFilterOverdueOnly((prev) => !prev)}
           onExportCSV={handleExportCSV}
           onOpenActivityDrawer={() => {
             fetchActivities();
@@ -802,6 +879,7 @@ export default function Home() {
             onDeleteTask={handleDeleteTask}
             onUpdateTaskStatus={handleUpdateTaskStatus}
             onOpenNewTaskModal={handleOpenNewTaskModal}
+            onCopyTask={handleCopyTask}
           />
         )}
       </div>
@@ -852,6 +930,12 @@ export default function Home() {
         onOpenNewProjectModal={handleOpenNewProjectModal}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
         onEditTask={handleEditTask}
+      />
+
+      {/* Menu de Atalhos de Teclado */}
+      <ShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
       />
 
       {/* Histórico / Drawer de Atividades */}

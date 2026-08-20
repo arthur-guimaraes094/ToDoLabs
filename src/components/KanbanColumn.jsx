@@ -63,7 +63,8 @@ export default function KanbanColumn({
   onEditTask, 
   onDeleteTask, 
   onUpdateTaskStatus,
-  onOpenNewTaskModal 
+  onOpenNewTaskModal,
+  onCopyTask
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -193,6 +194,7 @@ export default function KanbanColumn({
                           onEditTask={onEditTask}
                           onDeleteTask={onDeleteTask}
                           onUpdateTaskStatus={onUpdateTaskStatus}
+                          onCopyTask={onCopyTask}
                         />
                       );
                     })}
@@ -242,6 +244,7 @@ export default function KanbanColumn({
                           onEditTask={onEditTask}
                           onDeleteTask={onDeleteTask}
                           onUpdateTaskStatus={onUpdateTaskStatus}
+                          onCopyTask={onCopyTask}
                         />
                       );
                     })}

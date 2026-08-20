@@ -14,7 +14,8 @@ import {
   Layers,
   LayoutGrid,
   Download,
-  History
+  History,
+  AlertTriangle
 } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
@@ -41,6 +42,9 @@ export default function Header({
   selectedTag = null,
   onSelectTag,
   availableTags = [],
+  overdueCount = 0,
+  filterOverdueOnly = false,
+  onToggleOverdueFilter,
   onExportCSV,
   onOpenActivityDrawer,
   selectedPriority,
@@ -111,6 +115,22 @@ export default function Header({
                 onClick={() => onSelectTag && onSelectTag('ALL')}
                 title="Limpar filtro de tag"
                 className="p-0.5 rounded hover:bg-amber-200/60 dark:hover:bg-amber-900/60 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#F7941D] focus-visible:outline-none"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Active Overdue Filter Indicator */}
+          {filterOverdueOnly && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 shadow-2xs animate-in fade-in duration-150">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span>Apenas Atrasadas ({overdueCount})</span>
+              <button
+                type="button"
+                onClick={onToggleOverdueFilter}
+                title="Limpar filtro de atrasadas"
+                className="p-0.5 rounded hover:bg-rose-200/60 dark:hover:bg-rose-900/60 text-rose-500 hover:text-rose-800 dark:hover:text-rose-200 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none"
               >
                 ✕
               </button>
@@ -199,6 +219,23 @@ export default function Header({
             <span className="flex items-center gap-1 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> <strong className="text-slate-900 dark:text-slate-200 font-mono">{taskStats.done}</strong> concluídas
             </span>
+
+            {/* Overdue Tasks Badge / Toggle */}
+            {overdueCount > 0 && (
+              <button
+                type="button"
+                onClick={onToggleOverdueFilter}
+                title={filterOverdueOnly ? "Desmarcar filtro de atrasadas" : "Filtrar apenas demandas atrasadas"}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none ${
+                  filterOverdueOnly
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs font-bold'
+                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60'
+                }`}
+              >
+                <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 animate-pulse" />
+                <span><strong className="font-mono">{overdueCount}</strong> em atraso</span>
+              </button>
+            )}
           </div>
         </div>
 

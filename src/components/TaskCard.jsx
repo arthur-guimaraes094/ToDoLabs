@@ -9,7 +9,9 @@ import {
   Trash2, 
   Edit3, 
   AlertTriangle,
-  ShieldCheck
+  ShieldCheck,
+  Copy,
+  Check
 } from 'lucide-react';
 import { getTagStyle } from '@/lib/tags';
 
@@ -79,14 +81,25 @@ export default function TaskCard({
   onDragEndCard,
   onEditTask, 
   onDeleteTask,
-  onUpdateTaskStatus
+  onUpdateTaskStatus,
+  onCopyTask
 }) {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLocalDragging, setIsLocalDragging] = useState(false);
   const [showAssigneesTooltip, setShowAssigneesTooltip] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const lastTargetStatusRef = useRef(null);
 
   const theme = PRIORITY_THEMES[task.priority] || PRIORITY_THEMES.MEDIA;
+
+  const handleCopyTask = (e) => {
+    e.stopPropagation();
+    const textToCopy = `[Demanda] ${task.title} (Prioridade: ${task.priority || 'Média'})`;
+    navigator.clipboard?.writeText(textToCopy);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 1800);
+    if (onCopyTask) onCopyTask(task);
+  };
 
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -224,6 +237,15 @@ export default function TaskCard({
 
             {/* Hover Actions: Edit / Delete */}
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <button
+                type="button"
+                onClick={handleCopyTask}
+                title={isCopied ? "Copiado!" : "Copiar Referência da Demanda"}
+                aria-label="Copiar referência"
+                className="p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
               <button
                 type="button"
                 onClick={(e) => {

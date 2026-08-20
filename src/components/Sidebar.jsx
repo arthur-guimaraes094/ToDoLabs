@@ -216,9 +216,20 @@ export default function Sidebar({
                     </div>
                   </div>
 
-                  {isSelected && (
-                    <span className="w-2 h-2 rounded-full bg-[#004C94] dark:bg-blue-400" />
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {user.task_count !== undefined && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-mono font-bold ${
+                        isSelected 
+                          ? 'bg-[#004C94] text-white border-[#004C94]' 
+                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                      }`}>
+                        {user.task_count}
+                      </span>
+                    )}
+                    {isSelected && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#004C94] dark:bg-blue-400" />
+                    )}
+                  </div>
                 </div>
               );
             })}
