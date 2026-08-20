@@ -47,6 +47,23 @@ const PRIORITY_THEMES = {
   }
 };
 
+function findColumnAtPoint(pointX, pointY) {
+  if (typeof document === 'undefined' || pointX == null || pointY == null) return null;
+  const columns = document.querySelectorAll('[data-column-status]');
+  for (const col of columns) {
+    const rect = col.getBoundingClientRect();
+    if (
+      pointX >= rect.left &&
+      pointX <= rect.right &&
+      pointY >= rect.top &&
+      pointY <= rect.bottom
+    ) {
+      return col.getAttribute('data-column-status');
+    }
+  }
+  return null;
+}
+
 export default function TaskCard({ 
   task, 
   index = 0,
@@ -86,20 +103,9 @@ export default function TaskCard({
   };
 
   const handleDrag = (e, info) => {
-    if (typeof document === 'undefined') return;
     const pointX = info?.point?.x ?? e?.clientX;
     const pointY = info?.point?.y ?? e?.clientY;
-    if (pointX === undefined || pointY === undefined) return;
-
-    const elements = document.elementsFromPoint(pointX, pointY);
-    let status = null;
-    for (const el of elements) {
-      const col = el.getAttribute?.('data-column-status') ? el : el.closest?.('[data-column-status]');
-      if (col) {
-        status = col.getAttribute('data-column-status');
-        break;
-      }
-    }
+    const status = findColumnAtPoint(pointX, pointY);
 
     if (status) {
       lastTargetStatusRef.current = status;
@@ -109,33 +115,18 @@ export default function TaskCard({
 
   const handleDragEnd = (e, info) => {
     setIsLocalDragging(false);
-    if (typeof document !== 'undefined') {
-      const pointX = info?.point?.x ?? e?.clientX ?? (e?.changedTouches && e.changedTouches[0]?.clientX);
-      const pointY = info?.point?.y ?? e?.clientY ?? (e?.changedTouches && e.changedTouches[0]?.clientY);
+    const pointX = info?.point?.x ?? e?.clientX ?? (e?.changedTouches && e.changedTouches[0]?.clientX);
+    const pointY = info?.point?.y ?? e?.clientY ?? (e?.changedTouches && e.changedTouches[0]?.clientY);
 
-      let targetStatus = null;
-      if (pointX !== undefined && pointY !== undefined && pointX > 0 && pointY > 0) {
-        const elements = document.elementsFromPoint(pointX, pointY);
-        for (const el of elements) {
-          const col = el.getAttribute?.('data-column-status') ? el : el.closest?.('[data-column-status]');
-          if (col) {
-            targetStatus = col.getAttribute('data-column-status');
-            break;
-          }
-        }
-      }
+    let targetStatus = findColumnAtPoint(pointX, pointY);
+    if (!targetStatus && lastTargetStatusRef.current) {
+      targetStatus = lastTargetStatusRef.current;
+    }
 
-      if (!targetStatus && lastTargetStatusRef.current) {
-        targetStatus = lastTargetStatusRef.current;
-      }
+    if (onDragEndCard) onDragEndCard();
 
-      if (onDragEndCard) onDragEndCard();
-
-      if (targetStatus && targetStatus !== task.status && onUpdateTaskStatus) {
-        onUpdateTaskStatus(task.id, targetStatus);
-      }
-    } else {
-      if (onDragEndCard) onDragEndCard();
+    if (targetStatus && targetStatus !== task.status && onUpdateTaskStatus) {
+      onUpdateTaskStatus(task.id, targetStatus);
     }
     lastTargetStatusRef.current = null;
   };
@@ -344,7 +335,7 @@ export default function TaskCard({
                   title="Sem dev atribuído"
                   className="w-6 h-6 rounded-full bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 text-[10px] shrink-0"
                 >
-                  <User className="w-3 h-3" />
+                  <User className="w-3.5 h-3.5" />
                 </div>
               )}
             </div>
