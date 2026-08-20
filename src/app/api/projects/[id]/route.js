@@ -1,18 +1,28 @@
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
+import { isValidUUID, sanitizeText } from '@/lib/validation';
 
 export async function PUT(request, { params }) {
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
+
+    if (!id || !isValidUUID(id)) {
+      return NextResponse.json({ error: 'ID de projeto inválido' }, { status: 400 });
+    }
+
     const body = await request.json();
     const { name, description, color_code } = body;
 
+    const cleanName = name !== undefined ? sanitizeText(name, 120) : undefined;
+    const cleanDesc = description !== undefined ? sanitizeText(description, 1000) : undefined;
+    const cleanColor = color_code !== undefined ? sanitizeText(color_code, 30) : undefined;
+
     const [updatedProject] = await sql`
       UPDATE projects
-      SET name = COALESCE(${name}, name),
-          description = COALESCE(${description}, description),
-          color_code = COALESCE(${color_code}, color_code)
+      SET name = COALESCE(${cleanName}, name),
+          description = COALESCE(${cleanDesc}, description),
+          color_code = COALESCE(${cleanColor}, color_code)
       WHERE id = ${id}::uuid
       RETURNING *
     `;
@@ -33,10 +43,16 @@ export async function DELETE(request, { params }) {
     const resolvedParams = await params;
     const id = resolvedParams.id;
 
-    if (!id) {
-      return NextResponse.json({ error: 'ID do projeto não fornecido' }, { status: 400 });
+    if (!id || !isValidUUID(id)) {
+      return NextResponse.json({ error: 'ID do projeto inválido' }, { status: 400 });
     }
 
+    // Remove tarefas associadas primeiro
+    await sql`
+      DELETE FROM tasks WHERE project_id = ${id}::uuid
+    `;
+
+    // Remove o projeto
     await sql`
       DELETE FROM projects WHERE id = ${id}::uuid
     `;
