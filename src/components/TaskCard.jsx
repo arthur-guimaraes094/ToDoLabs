@@ -8,7 +8,8 @@ import {
   User, 
   Trash2, 
   Edit3, 
-  AlertTriangle 
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 import { getTagStyle } from '@/lib/tags';
 
@@ -82,6 +83,7 @@ export default function TaskCard({
 }) {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLocalDragging, setIsLocalDragging] = useState(false);
+  const [showAssigneesTooltip, setShowAssigneesTooltip] = useState(false);
   const lastTargetStatusRef = useRef(null);
 
   const theme = PRIORITY_THEMES[task.priority] || PRIORITY_THEMES.MEDIA;
@@ -98,6 +100,7 @@ export default function TaskCard({
 
   const handleDragStart = () => {
     setIsLocalDragging(true);
+    setShowAssigneesTooltip(false);
     lastTargetStatusRef.current = null;
     if (onDragStartCard) onDragStartCard(task.id);
   };
@@ -134,9 +137,8 @@ export default function TaskCard({
   // Multi-assignees list (array of objects)
   const assigneesList = Array.isArray(task.assignees) && task.assignees.length > 0
     ? task.assignees
-    : (task.assignee_avatar ? [{ id: task.assigned_to_id, name: task.assignee_name, avatar_url: task.assignee_avatar }] : []);
+    : (task.assignee_avatar ? [{ id: task.assigned_to_id, name: task.assignee_name, avatar_url: task.assignee_avatar, role: task.assignee_role }] : []);
 
-  const assigneesTooltip = assigneesList.map((a) => a.name).join(', ') || 'Ninguém atribuído';
   const isFanMode = viewMode === 'fan';
 
   return (
@@ -310,8 +312,12 @@ export default function TaskCard({
               <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">Sem prazo</span>
             )}
 
-            {/* Multi-Assignee Avatars Stack */}
-            <div className="flex items-center" title={assigneesTooltip}>
+            {/* Multi-Assignee Avatars Stack com Popover Flutuante Rico */}
+            <div 
+              className="relative flex items-center cursor-pointer"
+              onMouseEnter={() => setShowAssigneesTooltip(true)}
+              onMouseLeave={() => setShowAssigneesTooltip(false)}
+            >
               {assigneesList.length > 0 ? (
                 <div className="flex items-center -space-x-2">
                   {assigneesList.slice(0, 3).map((assignee, idx) => (
@@ -320,7 +326,6 @@ export default function TaskCard({
                       key={assignee.id || idx}
                       src={assignee.avatar_url}
                       alt={assignee.name}
-                      title={assignee.name}
                       className="w-6 h-6 rounded-full bg-white dark:bg-[#131C31] ring-2 ring-white dark:ring-slate-800 border border-slate-300 dark:border-slate-700 shrink-0 shadow-2xs"
                     />
                   ))}
@@ -335,9 +340,64 @@ export default function TaskCard({
                   title="Sem dev atribuído"
                   className="w-6 h-6 rounded-full bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 text-[10px] shrink-0"
                 >
-                  <User className="w-3.5 h-3.5" />
+                  <User className="w-3 h-3" />
                 </div>
               )}
+
+              {/* Tooltip Flutuante Rica de Desenvolvedores (Rich Popover) */}
+              <AnimatePresence>
+                {showAssigneesTooltip && assigneesList.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                    className="absolute right-0 bottom-8 z-50 w-52 p-2.5 rounded-2xl bg-white/95 dark:bg-[#1E293B]/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-700 shadow-2xl space-y-2 pointer-events-none text-slate-800 dark:text-slate-200"
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-1.5 px-0.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        Equipe Responsável
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-[#004C94] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded-md">
+                        {assigneesList.length} {assigneesList.length === 1 ? 'dev' : 'devs'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {assigneesList.map((dev, devIdx) => {
+                        const isLead = dev.role && dev.role.toLowerCase().includes('lead');
+                        const roleBadge = isLead
+                          ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                          : dev.role?.toLowerCase().includes('pleno')
+                          ? 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
+                          : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+
+                        return (
+                          <div key={dev.id || devIdx} className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={dev.avatar_url}
+                              alt={dev.name}
+                              className="w-7 h-7 rounded-full bg-white dark:bg-[#131C31] border border-slate-300 dark:border-slate-600 shrink-0 shadow-xs"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                                {dev.name}
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {isLead && <ShieldCheck className="w-3 h-3 text-[#F7941D] shrink-0" />}
+                                <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded-md border font-semibold truncate ${roleBadge}`}>
+                                  {dev.role || 'Desenvolvedor'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
