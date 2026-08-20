@@ -153,11 +153,12 @@ function TaskModalForm({
             </label>
             <textarea
               id="task-desc"
-              rows={2}
+              rows={3}
               placeholder="Descreva o contexto, ideia vinda do WhatsApp ou requisitos..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500 transition-colors resize-none"
+              style={{ fieldSizing: 'content' }}
+              className="w-full min-h-[76px] max-h-[220px] bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500 transition-colors resize-y leading-relaxed"
             />
           </div>
 
