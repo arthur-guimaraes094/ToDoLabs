@@ -1,18 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useDeferredValue, useSyncExternalStore } from 'react';
+import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import KanbanBoard from '@/components/KanbanBoard';
-import TaskModal from '@/components/TaskModal';
-import ProjectModal from '@/components/ProjectModal';
-import TeamModal from '@/components/TeamModal';
-import ConfirmModal from '@/components/ConfirmModal';
-import CommandPalette from '@/components/CommandPalette';
-import ActivityDrawer from '@/components/ActivityDrawer';
 import Toast from '@/components/Toast';
 import { Loader2 } from 'lucide-react';
 import { triggerCompletionConfetti } from '@/lib/confetti';
+
+// Dynamic code-splitting para modais e painéis pesados (Vercel bundle optimization)
+const TaskModal = dynamic(() => import('@/components/TaskModal'), { ssr: false });
+const ProjectModal = dynamic(() => import('@/components/ProjectModal'), { ssr: false });
+const TeamModal = dynamic(() => import('@/components/TeamModal'), { ssr: false });
+const ConfirmModal = dynamic(() => import('@/components/ConfirmModal'), { ssr: false });
+const CommandPalette = dynamic(() => import('@/components/CommandPalette'), { ssr: false });
+const ActivityDrawer = dynamic(() => import('@/components/ActivityDrawer'), { ssr: false });
 
 const PRIORITY_WEIGHTS = {
   URGENTE: 4,
@@ -606,72 +609,85 @@ export default function Home() {
     setIsTaskModalOpen(true);
   };
 
-  // Safe Array Wrappers
-  const safeTasks = Array.isArray(tasks) ? tasks : [];
-  const safeProjects = Array.isArray(projects) ? projects : [];
-  const safeTeamUsers = Array.isArray(teamUsers) ? teamUsers : [];
+  // Safe Array Wrappers com useMemo estáveis
+  const safeTasks = useMemo(() => (Array.isArray(tasks) ? tasks : []), [tasks]);
+  const safeProjects = useMemo(() => (Array.isArray(projects) ? projects : []), [projects]);
+  const safeTeamUsers = useMemo(() => (Array.isArray(teamUsers) ? teamUsers : []), [teamUsers]);
 
-  // Dynamic Project Task Counts
-  const projectsWithCounts = safeProjects.map((proj) => {
-    const count = safeTasks.filter((t) => t.project_id === proj.id).length;
-    return { ...proj, task_count: count };
-  });
+  // React 19 useDeferredValue para desacoplar a digitação na busca da filtragem pesada
+  const deferredSearchTerm = useDeferredValue(searchTerm);
 
-  // Dynamic Available Tags from safeTasks
-  const availableTags = Array.from(
-    new Set(
-      safeTasks.flatMap((t) => (Array.isArray(t.tags) ? t.tags : []))
-    )
-  );
+  // Dynamic Project Task Counts com useMemo
+  const projectsWithCounts = useMemo(() => {
+    return safeProjects.map((proj) => {
+      const count = safeTasks.filter((t) => t.project_id === proj.id).length;
+      return { ...proj, task_count: count };
+    });
+  }, [safeProjects, safeTasks]);
 
-  // Filter & Sort Tasks
-  let filteredTasks = safeTasks.filter((t) => {
-    const matchesProject = activeProjectId ? t.project_id === activeProjectId : true;
-    const matchesSearch = searchTerm.trim() === '' || 
-      (t.title && t.title.toLowerCase().includes(searchTerm.toLowerCase())) || 
-      (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (Array.isArray(t.tags) && t.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase())));
-    const matchesPriority = selectedPriority === 'ALL' ? true : t.priority === selectedPriority;
-    const matchesAssignee = selectedAssigneeId
-      ? (Array.isArray(t.assignee_ids) && t.assignee_ids.includes(selectedAssigneeId)) ||
-        (t.assigned_to_id === selectedAssigneeId) ||
-        (Array.isArray(t.assignees) && t.assignees.some((a) => a.id === selectedAssigneeId))
-      : true;
-    const matchesTag = selectedTag && selectedTag !== 'ALL'
-      ? Array.isArray(t.tags) && t.tags.includes(selectedTag)
-      : true;
-    
-    return matchesProject && matchesSearch && matchesPriority && matchesAssignee && matchesTag;
-  });
+  // Dynamic Available Tags from safeTasks com useMemo
+  const availableTags = useMemo(() => {
+    return Array.from(
+      new Set(
+        safeTasks.flatMap((t) => (Array.isArray(t.tags) ? t.tags : []))
+      )
+    );
+  }, [safeTasks]);
 
-  // Dynamic Sorting
-  filteredTasks = [...filteredTasks].sort((a, b) => {
-    if (sortBy === 'PRIORITY_DESC') {
-      const weightA = PRIORITY_WEIGHTS[a.priority] || 0;
-      const weightB = PRIORITY_WEIGHTS[b.priority] || 0;
-      return weightB - weightA;
-    }
-    if (sortBy === 'PRIORITY_ASC') {
-      const weightA = PRIORITY_WEIGHTS[a.priority] || 0;
-      const weightB = PRIORITY_WEIGHTS[b.priority] || 0;
-      return weightA - weightB;
-    }
-    if (sortBy === 'DUE_DATE_ASC') {
-      if (!a.due_date) return 1;
-      if (!b.due_date) return -1;
-      return new Date(a.due_date) - new Date(b.due_date);
-    }
-    if (sortBy === 'DUE_DATE_DESC') {
-      if (!a.due_date) return 1;
-      if (!b.due_date) return -1;
-      return new Date(b.due_date) - new Date(a.due_date);
-    }
-    // Default: Created at DESC
-    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-  });
+  // Filter & Sort Tasks com useMemo
+  const filteredTasks = useMemo(() => {
+    const list = safeTasks.filter((t) => {
+      const matchesProject = activeProjectId ? t.project_id === activeProjectId : true;
+      const matchesSearch = deferredSearchTerm.trim() === '' || 
+        (t.title && t.title.toLowerCase().includes(deferredSearchTerm.toLowerCase())) || 
+        (t.description && t.description.toLowerCase().includes(deferredSearchTerm.toLowerCase())) ||
+        (Array.isArray(t.tags) && t.tags.some((tag) => tag.toLowerCase().includes(deferredSearchTerm.toLowerCase())));
+      const matchesPriority = selectedPriority === 'ALL' ? true : t.priority === selectedPriority;
+      const matchesAssignee = selectedAssigneeId
+        ? (Array.isArray(t.assignee_ids) && t.assignee_ids.includes(selectedAssigneeId)) ||
+          (t.assigned_to_id === selectedAssigneeId) ||
+          (Array.isArray(t.assignees) && t.assignees.some((a) => a.id === selectedAssigneeId))
+        : true;
+      const matchesTag = selectedTag && selectedTag !== 'ALL'
+        ? Array.isArray(t.tags) && t.tags.includes(selectedTag)
+        : true;
+      
+      return matchesProject && matchesSearch && matchesPriority && matchesAssignee && matchesTag;
+    });
 
-  const activeProject = safeProjects.find((p) => p.id === activeProjectId);
-  const activeAssignee = safeTeamUsers.find((u) => u.id === selectedAssigneeId);
+    return [...list].sort((a, b) => {
+      if (sortBy === 'PRIORITY_DESC') {
+        const weightA = PRIORITY_WEIGHTS[a.priority] || 0;
+        const weightB = PRIORITY_WEIGHTS[b.priority] || 0;
+        return weightB - weightA;
+      }
+      if (sortBy === 'PRIORITY_ASC') {
+        const weightA = PRIORITY_WEIGHTS[a.priority] || 0;
+        const weightB = PRIORITY_WEIGHTS[b.priority] || 0;
+        return weightA - weightB;
+      }
+      if (sortBy === 'DUE_DATE_ASC') {
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date) - new Date(b.due_date);
+      }
+      if (sortBy === 'DUE_DATE_DESC') {
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(b.due_date) - new Date(a.due_date);
+      }
+      // Default: Created at DESC
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+  }, [safeTasks, activeProjectId, deferredSearchTerm, selectedPriority, selectedAssigneeId, selectedTag, sortBy]);
+
+  const activeProject = useMemo(() => {
+    return safeProjects.find((p) => p.id === activeProjectId);
+  }, [safeProjects, activeProjectId]);
+
+  const activeAssignee = useMemo(() => {
+    return safeTeamUsers.find((u) => u.id === selectedAssigneeId);
+  }, [safeTeamUsers, selectedAssigneeId]);
 
   // CSV Export Handler
   const handleExportCSV = () => {

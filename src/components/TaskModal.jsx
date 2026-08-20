@@ -154,7 +154,7 @@ function TaskModalForm({
             <textarea
               id="task-desc"
               rows={3}
-              placeholder="Descreva o contexto, ideia vinda do WhatsApp ou requisitos..."
+              placeholder="Descreva o contexto e requisitos..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               style={{ fieldSizing: 'content' }}
