@@ -5,8 +5,8 @@ import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import KanbanBoard from '@/components/KanbanBoard';
+import KanbanSkeleton from '@/components/KanbanSkeleton';
 import Toast from '@/components/Toast';
-import { Loader2 } from 'lucide-react';
 import { triggerCompletionConfetti } from '@/lib/confetti';
 
 // Dynamic code-splitting para modais e painéis pesados (Vercel bundle optimization)
@@ -791,12 +791,9 @@ export default function Home() {
           taskStats={taskStats}
         />
 
-        {/* Loading Spinner or Kanban Board */}
+        {/* Loading Skeleton or Kanban Board */}
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center flex-col gap-3 text-slate-500">
-            <Loader2 className="w-8 h-8 animate-spin text-[#004C94] dark:text-blue-400" />
-            <span className="text-xs font-mono">Conectando ao Neon PostgreSQL...</span>
-          </div>
+          <KanbanSkeleton />
         ) : (
           <KanbanBoard
             tasks={filteredTasks}

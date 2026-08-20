@@ -3,44 +3,50 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TaskCard from './TaskCard';
-import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 
 const COLUMN_CONFIG = {
   IDEIAS_BACKLOG: {
     title: 'Ideias / Backlog',
     color: '#8b5cf6',
     badgeBg: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800',
-    emptyText: '💡 Nenhuma ideia registrada nesta categoria'
+    emptyTitle: 'Nenhuma ideia ou demanda no backlog',
+    emptyDesc: 'Registre novos insights, requisitos de negócio ou tarefas a priorizar.'
   },
   EM_ANALISE: {
     title: 'Em Análise',
     color: '#004C94',
     badgeBg: 'bg-blue-100 text-[#004C94] border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
-    emptyText: '🔍 Nenhuma demanda em triagem nesta categoria'
+    emptyTitle: 'Nenhuma demanda em triagem',
+    emptyDesc: 'Arraste uma ideia para cá para detalhar escopo e requisitos técnicos.'
   },
   DESENVOLVENDO: {
     title: 'Desenvolvendo',
     color: '#0284c7',
     badgeBg: 'bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800',
-    emptyText: '⚙️ Nenhuma tarefa em execução nesta categoria'
+    emptyTitle: 'Nenhuma tarefa em execução ativa',
+    emptyDesc: 'Mova demandas aprovadas para cá durante o sprint de desenvolvimento.'
   },
   EM_REVISAO: {
     title: 'Em Revisão',
     color: '#F7941D',
     badgeBg: 'bg-amber-100 text-[#d97706] border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
-    emptyText: '👀 Nenhuma revisão pendente nesta categoria'
+    emptyTitle: 'Nenhuma revisão de código pendente',
+    emptyDesc: 'Demandas com Pull Request aberto aparecem aqui para validação de pares.'
   },
   CONCLUIDA: {
     title: 'Concluída',
     color: '#10b981',
     badgeBg: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
-    emptyText: '✅ Nenhuma entrega concluída ainda nesta categoria'
+    emptyTitle: 'Nenhuma entrega concluída ainda',
+    emptyDesc: 'Arraste tarefas finalizadas para cá para celebrar com confetti!'
   },
   CANCELADA: {
     title: 'Cancelada',
     color: '#64748b',
     badgeBg: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
-    emptyText: '🚫 Nenhuma demanda descartada nesta categoria'
+    emptyTitle: 'Nenhuma demanda descartada',
+    emptyDesc: 'Ideias descontinuadas ou duplicadas ficam registradas aqui.'
   }
 };
 
@@ -86,7 +92,7 @@ export default function KanbanColumn({
         <div className="flex items-center gap-3 pointer-events-auto">
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
             title={isCollapsed ? "Expandir Categoria" : "Recolher Categoria"}
           >
             {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -109,7 +115,7 @@ export default function KanbanColumn({
         <div className="flex items-center gap-2 pointer-events-auto">
           <button
             onClick={() => onOpenNewTaskModal(statusKey)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#004C94] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200/80 dark:border-blue-800 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#004C94] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200/80 dark:border-blue-800 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
           >
             <Plus className="w-3.5 h-3.5" /> Adicionar Demanda
           </button>
@@ -129,20 +135,31 @@ export default function KanbanColumn({
             {tasks.length === 0 ? (
               <motion.div 
                 onClick={() => onOpenNewTaskModal(statusKey)}
-                whileHover={{ scale: 1.005 }}
-                whileTap={{ scale: 0.995 }}
-                className={`w-full py-8 my-2 border border-dashed rounded-2xl flex flex-col items-center justify-center p-4 text-center gap-2 group cursor-pointer transition-colors shadow-xs ${
+                whileHover={{ scale: 1.003 }}
+                whileTap={{ scale: 0.997 }}
+                className={`w-full py-7 my-2 border border-dashed rounded-2xl flex flex-col items-center justify-center p-5 text-center gap-2.5 group cursor-pointer transition-all duration-150 shadow-2xs ${
                   isTargetDrop 
-                    ? 'border-[#004C94] dark:border-blue-500 bg-blue-100/50 dark:bg-blue-950/30 text-[#004C94] dark:text-blue-300' 
-                    : 'border-slate-300 dark:border-slate-700 hover:border-[#F7941D] bg-slate-50/50 dark:bg-[#0E1526]/50 hover:bg-white dark:hover:bg-[#1E293B] text-slate-500 dark:text-slate-400'
+                    ? 'border-[#004C94] dark:border-blue-500 bg-blue-100/50 dark:bg-blue-950/30 text-[#004C94] dark:text-blue-300 ring-2 ring-[#004C94]/20' 
+                    : 'border-slate-200 dark:border-slate-800 hover:border-[#004C94] dark:hover:border-blue-500/60 bg-slate-50/40 dark:bg-[#0E1526]/40 hover:bg-white dark:hover:bg-[#152238] text-slate-600 dark:text-slate-400'
                 }`}
               >
-                <span className="text-xs font-semibold">
-                  {isTargetDrop ? 'Solte a demanda aqui para mover' : config.emptyText}
-                </span>
+                <div 
+                  className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-xs"
+                  style={{ backgroundColor: `${config.color}15`, color: config.color }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {isTargetDrop ? 'Solte a demanda aqui para mover' : config.emptyTitle}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 max-w-xs">
+                    {isTargetDrop ? 'A demanda será atualizada para esta etapa imediatamente.' : config.emptyDesc}
+                  </p>
+                </div>
                 {!isTargetDrop && (
-                  <span className="text-xs text-[#d97706] dark:text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-bold">
-                    <Plus className="w-4 h-4" /> Clique para adicionar uma nova demanda nesta categoria
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#004C94] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-3 py-1 rounded-lg border border-blue-200/60 dark:border-blue-800/60 mt-1 transition-colors">
+                    <Plus className="w-3.5 h-3.5" /> Adicionar Demanda
                   </span>
                 )}
               </motion.div>
