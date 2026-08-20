@@ -14,6 +14,7 @@ const KANBAN_STATUSES = [
 
 export default function KanbanBoard({ 
   tasks = [], 
+  viewMode = 'fan',
   onEditTask, 
   onDeleteTask, 
   onUpdateTaskStatus,
@@ -39,6 +40,7 @@ export default function KanbanBoard({
             key={statusKey}
             statusKey={statusKey}
             tasks={columnTasks}
+            viewMode={viewMode}
             isOriginColumn={isOriginColumn}
             isTargetDrop={isTargetColumn}
             activeDraggingTaskId={activeDraggingTaskId}

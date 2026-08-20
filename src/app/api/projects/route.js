@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
+import { sanitizeText } from '@/lib/validation';
 
 export async function GET() {
   try {
@@ -14,11 +15,7 @@ export async function GET() {
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Erro ao buscar projetos:', error);
-    return NextResponse.json([
-      { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', name: 'Sistema Financeiro', description: 'Módulo de faturamento, gateway de pagamento e conciliação bancária', color_code: '#3b82f6', task_count: 3 },
-      { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', name: 'Portal do Cliente', description: 'Painel web responsivo para acompanhamento de pedidos e chamados', color_code: '#10b981', task_count: 2 },
-      { id: 'cccccccc-cccc-cccc-cccc-cccccccccccc', name: 'App Mobile Vendas', description: 'Aplicativo mobile para força de vendas e catálogo de produtos', color_code: '#8b5cf6', task_count: 0 }
-    ]);
+    return NextResponse.json({ error: 'Falha ao buscar projetos' }, { status: 500 });
   }
 }
 
@@ -27,13 +24,17 @@ export async function POST(request) {
     const body = await request.json();
     const { name, description, color_code } = body;
 
-    if (!name) {
+    const cleanName = sanitizeText(name, 120);
+    if (!cleanName) {
       return NextResponse.json({ error: 'Nome do projeto é obrigatório' }, { status: 400 });
     }
 
+    const cleanDesc = sanitizeText(description, 1000);
+    const cleanColor = sanitizeText(color_code, 30) || '#004C94';
+
     const [newProject] = await sql`
       INSERT INTO projects (name, description, color_code)
-      VALUES (${name}, ${description || ''}, ${color_code || '#6366f1'})
+      VALUES (${cleanName}, ${cleanDesc}, ${cleanColor})
       RETURNING id, name, description, color_code, created_at
     `;
 

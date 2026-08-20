@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import KanbanBoard from '@/components/KanbanBoard';
@@ -9,8 +9,10 @@ import ProjectModal from '@/components/ProjectModal';
 import TeamModal from '@/components/TeamModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import CommandPalette from '@/components/CommandPalette';
+import ActivityDrawer from '@/components/ActivityDrawer';
 import Toast from '@/components/Toast';
 import { Loader2 } from 'lucide-react';
+import { triggerCompletionConfetti } from '@/lib/confetti';
 
 const PRIORITY_WEIGHTS = {
   URGENTE: 4,
@@ -19,6 +21,24 @@ const PRIORITY_WEIGHTS = {
   BAIXA: 1
 };
 
+function getThemeSnapshot() {
+  if (typeof window === 'undefined') return 'light';
+  const saved = localStorage.getItem('todolabs_theme');
+  if (saved) return saved;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function subscribeTheme(callback) {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', callback);
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  media.addEventListener('change', callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    media.removeEventListener('change', callback);
+  };
+}
+
 export default function Home() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -26,11 +46,23 @@ export default function Home() {
   const [activeProjectId, setActiveProjectId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('ALL');
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState(null);
+  const [selectedTag, setSelectedTag] = useState('ALL');
   const [sortBy, setSortBy] = useState('DEFAULT');
+  const [viewMode, setViewMode] = useState('fan'); // 'fan' (leque) ou 'grid' (grade)
   const [isLoading, setIsLoading] = useState(true);
   
+  // React 19 external store for theme
+  const currentTheme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, () => 'light');
+  const isDarkMode = currentTheme === 'dark';
+
   // Real DB Health Status
   const [dbStatus, setDbStatus] = useState({ status: 'checking', latencyMs: 0 });
+
+  // Activities Log State
+  const [activities, setActivities] = useState([]);
+  const [isActivityDrawerOpen, setIsActivityDrawerOpen] = useState(false);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
 
   // Toast State
   const [toast, setToast] = useState(null);
@@ -69,14 +101,25 @@ export default function Home() {
     });
   };
 
-  // Initial Data Fetching & Health Polling
+  // Sync class on documentElement
   useEffect(() => {
-    fetchInitialData();
-    checkHealth();
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
-    const healthInterval = setInterval(checkHealth, 15000);
-    return () => clearInterval(healthInterval);
-  }, []);
+  const handleToggleDarkMode = () => {
+    const nextTheme = isDarkMode ? 'light' : 'dark';
+    localStorage.setItem('todolabs_theme', nextTheme);
+    if (nextTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    window.dispatchEvent(new Event('storage'));
+  };
 
   const checkHealth = async () => {
     try {
@@ -92,32 +135,119 @@ export default function Home() {
     }
   };
 
-  const fetchInitialData = async () => {
-    setIsLoading(true);
+  const fetchActivities = useCallback(async () => {
+    setIsLoadingActivities(true);
     try {
-      const [usersRes, projectsRes, tasksRes] = await Promise.all([
-        fetch('/api/users').then((r) => r.json()),
-        fetch('/api/projects').then((r) => r.json()),
-        fetch('/api/tasks').then((r) => r.json())
+      const res = await fetch('/api/activities');
+      if (res.ok) {
+        const data = await res.json();
+        setActivities(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar log de atividades:', err);
+    } finally {
+      setIsLoadingActivities(false);
+    }
+  }, []);
+
+  const logActivity = async (action_type, description, entity_type = 'TASK', entity_id = null, metadata = {}) => {
+    try {
+      const tempId = `temp-${Date.now()}`;
+      setActivities((prev) => [
+        {
+          id: tempId,
+          action_type,
+          description,
+          entity_type,
+          entity_id,
+          metadata,
+          created_at: new Date().toISOString()
+        },
+        ...prev
       ]);
 
-      setTeamUsers(usersRes || []);
-      setProjects(projectsRes || []);
-      setTasks(tasksRes || []);
+      await fetch('/api/activities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action_type,
+          description,
+          entity_type,
+          entity_id,
+          metadata
+        })
+      });
     } catch (err) {
-      console.error('Erro ao carregar dados do Neon:', err);
-    } finally {
-      setIsLoading(false);
+      console.error('Erro ao registrar atividade:', err);
     }
   };
+
+  // Initial Data Fetching & Health Polling
+  useEffect(() => {
+    let isSubscribed = true;
+
+    async function pingHealth() {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const res = await fetch('/api/health');
+        if (res.ok && isSubscribed) {
+          const data = await res.json();
+          setDbStatus({ status: 'online', latencyMs: data.latencyMs || 10 });
+        } else if (isSubscribed) {
+          setDbStatus({ status: 'offline', latencyMs: 0 });
+        }
+      } catch {
+        if (isSubscribed) setDbStatus({ status: 'offline', latencyMs: 0 });
+      }
+    }
+
+    async function loadData() {
+      try {
+        const [usersRes, projectsRes, tasksRes, activitiesRes] = await Promise.all([
+          fetch('/api/users').then((r) => (r.ok ? r.json() : [])).catch(() => []),
+          fetch('/api/projects').then((r) => (r.ok ? r.json() : [])).catch(() => []),
+          fetch('/api/tasks').then((r) => (r.ok ? r.json() : [])).catch(() => []),
+          fetch('/api/activities').then((r) => (r.ok ? r.json() : [])).catch(() => [])
+        ]);
+
+        if (isSubscribed) {
+          setTeamUsers(Array.isArray(usersRes) ? usersRes : []);
+          setProjects(Array.isArray(projectsRes) ? projectsRes : []);
+          setTasks(Array.isArray(tasksRes) ? tasksRes : []);
+          setActivities(Array.isArray(activitiesRes) ? activitiesRes : []);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar dados do Neon:', err);
+        if (isSubscribed) {
+          setTeamUsers([]);
+          setProjects([]);
+          setTasks([]);
+          setActivities([]);
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadData();
+    pingHealth();
+
+    const healthInterval = setInterval(pingHealth, 45000);
+    return () => {
+      isSubscribed = false;
+      clearInterval(healthInterval);
+    };
+  }, []);
 
   // Reload helpers
   const reloadTasks = async () => {
     try {
       const url = activeProjectId ? `/api/tasks?project_id=${activeProjectId}` : '/api/tasks';
       const res = await fetch(url);
-      const data = await res.json();
-      setTasks(data || []);
+      if (res.ok) {
+        const data = await res.json();
+        setTasks(Array.isArray(data) ? data : []);
+      }
     } catch (err) {
       console.error('Erro ao recarregar tarefas:', err);
     }
@@ -126,8 +256,10 @@ export default function Home() {
   const reloadProjects = async () => {
     try {
       const res = await fetch('/api/projects');
-      const data = await res.json();
-      setProjects(data || []);
+      if (res.ok) {
+        const data = await res.json();
+        setProjects(Array.isArray(data) ? data : []);
+      }
     } catch (err) {
       console.error('Erro ao recarregar projetos:', err);
     }
@@ -136,8 +268,10 @@ export default function Home() {
   const reloadUsers = async () => {
     try {
       const res = await fetch('/api/users');
-      const data = await res.json();
-      setTeamUsers(data || []);
+      if (res.ok) {
+        const data = await res.json();
+        setTeamUsers(Array.isArray(data) ? data : []);
+      }
     } catch (err) {
       console.error('Erro ao recarregar time:', err);
     }
@@ -145,7 +279,6 @@ export default function Home() {
 
   // --- Task CRUD ---
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
-    // Evita disparar requisição e toast se a demanda já estiver na mesma coluna
     const currentTask = tasks.find((t) => t.id === taskId);
     if (!currentTask || currentTask.status === newStatus) {
       return;
@@ -164,7 +297,21 @@ export default function Home() {
       CANCELADA: 'Cancelada'
     };
 
-    showToast(`✓ Demanda movida para ${STATUS_LABELS[newStatus] || newStatus}`, 'success');
+    const statusLabel = STATUS_LABELS[newStatus] || newStatus;
+    showToast(`✓ Demanda movida para ${statusLabel}`, 'success');
+
+    // Se a demanda foi concluída, dispara o efeito de confetes comemorativos!
+    if (newStatus === 'CONCLUIDA') {
+      triggerCompletionConfetti();
+    }
+
+    logActivity(
+      'TASK_MOVED',
+      `Demanda "${currentTask.title}" movida para ${statusLabel}`,
+      'TASK',
+      taskId,
+      { oldStatus: currentTask.status, newStatus }
+    );
 
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
@@ -188,6 +335,7 @@ export default function Home() {
   const handleSaveTask = async (taskData) => {
     try {
       if (taskData.id) {
+        const oldTask = tasks.find((t) => t.id === taskData.id);
         const res = await fetch(`/api/tasks/${taskData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -196,6 +344,17 @@ export default function Home() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao atualizar demanda');
         showToast('✓ Demanda atualizada com sucesso', 'success');
+
+        if (taskData.status === 'CONCLUIDA' && oldTask?.status !== 'CONCLUIDA') {
+          triggerCompletionConfetti();
+        }
+
+        logActivity(
+          'TASK_UPDATED',
+          `Demanda "${taskData.title}" atualizada`,
+          'TASK',
+          taskData.id
+        );
       } else {
         const res = await fetch('/api/tasks', {
           method: 'POST',
@@ -205,6 +364,17 @@ export default function Home() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao registrar demanda');
         showToast('✓ Nova demanda registrada com sucesso', 'success');
+
+        if (taskData.status === 'CONCLUIDA') {
+          triggerCompletionConfetti();
+        }
+
+        logActivity(
+          'TASK_CREATED',
+          `Nova demanda registrada: "${taskData.title}"`,
+          'TASK',
+          data.id
+        );
       }
       reloadTasks();
       reloadProjects();
@@ -217,6 +387,7 @@ export default function Home() {
   };
 
   const handleDeleteTask = (taskId) => {
+    const taskToDelete = tasks.find((t) => t.id === taskId);
     askConfirmation(
       'Excluir Demanda',
       'Tem certeza que deseja excluir esta demanda permanentemente?',
@@ -228,6 +399,14 @@ export default function Home() {
             const errData = await res.json();
             throw new Error(errData.error || 'Erro ao remover demanda');
           }
+
+          logActivity(
+            'TASK_DELETED',
+            `Demanda "${taskToDelete?.title || 'Demanda'}" excluída permanentemente`,
+            'TASK',
+            taskId
+          );
+
           reloadProjects();
           checkHealth();
           showToast('✓ Demanda removida com sucesso', 'info');
@@ -262,6 +441,13 @@ export default function Home() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao atualizar projeto');
         showToast('✓ Projeto atualizado com sucesso', 'success');
+
+        logActivity(
+          'PROJECT_CREATED',
+          `Projeto "${projectData.name}" atualizado`,
+          'PROJECT',
+          projectData.id
+        );
       } else {
         const res = await fetch('/api/projects', {
           method: 'POST',
@@ -274,6 +460,13 @@ export default function Home() {
           setActiveProjectId(newProj.id);
         }
         showToast('✓ Novo projeto criado com sucesso', 'success');
+
+        logActivity(
+          'PROJECT_CREATED',
+          `Novo projeto criado: "${projectData.name}"`,
+          'PROJECT',
+          newProj.id
+        );
       }
       reloadProjects();
       checkHealth();
@@ -296,6 +489,14 @@ export default function Home() {
             const errData = await res.json();
             throw new Error(errData.error || 'Erro ao excluir projeto');
           }
+
+          logActivity(
+            'PROJECT_DELETED',
+            `Projeto "${proj?.name || ''}" excluído`,
+            'PROJECT',
+            projectId
+          );
+
           if (activeProjectId === projectId) {
             setActiveProjectId(null);
           }
@@ -325,6 +526,13 @@ export default function Home() {
           throw new Error(data.error || 'Erro ao atualizar dados do desenvolvedor');
         }
         showToast('✓ Dados do desenvolvedor atualizados', 'success');
+
+        logActivity(
+          'USER_CREATED',
+          `Dados do desenvolvedor "${userData.name}" atualizados`,
+          'USER',
+          userData.id
+        );
       } else {
         const res = await fetch('/api/users', {
           method: 'POST',
@@ -336,6 +544,13 @@ export default function Home() {
           throw new Error(data.error || 'Erro ao cadastrar desenvolvedor');
         }
         showToast('✓ Novo desenvolvedor cadastrado', 'success');
+
+        logActivity(
+          'USER_CREATED',
+          `Novo desenvolvedor cadastrado no time: "${userData.name}"`,
+          'USER',
+          data.id
+        );
       }
       reloadUsers();
       reloadTasks();
@@ -359,6 +574,14 @@ export default function Home() {
             const errData = await res.json();
             throw new Error(errData.error || 'Erro ao remover desenvolvedor');
           }
+
+          logActivity(
+            'USER_DELETED',
+            `Desenvolvedor "${user?.name || 'Dev'}" removido da equipe`,
+            'USER',
+            userId
+          );
+
           reloadUsers();
           reloadTasks();
           checkHealth();
@@ -383,15 +606,42 @@ export default function Home() {
     setIsTaskModalOpen(true);
   };
 
+  // Safe Array Wrappers
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const safeProjects = Array.isArray(projects) ? projects : [];
+  const safeTeamUsers = Array.isArray(teamUsers) ? teamUsers : [];
+
+  // Dynamic Project Task Counts
+  const projectsWithCounts = safeProjects.map((proj) => {
+    const count = safeTasks.filter((t) => t.project_id === proj.id).length;
+    return { ...proj, task_count: count };
+  });
+
+  // Dynamic Available Tags from safeTasks
+  const availableTags = Array.from(
+    new Set(
+      safeTasks.flatMap((t) => (Array.isArray(t.tags) ? t.tags : []))
+    )
+  );
+
   // Filter & Sort Tasks
-  let filteredTasks = tasks.filter((t) => {
+  let filteredTasks = safeTasks.filter((t) => {
     const matchesProject = activeProjectId ? t.project_id === activeProjectId : true;
     const matchesSearch = searchTerm.trim() === '' || 
-      t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      (t.title && t.title.toLowerCase().includes(searchTerm.toLowerCase())) || 
+      (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (Array.isArray(t.tags) && t.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase())));
     const matchesPriority = selectedPriority === 'ALL' ? true : t.priority === selectedPriority;
+    const matchesAssignee = selectedAssigneeId
+      ? (Array.isArray(t.assignee_ids) && t.assignee_ids.includes(selectedAssigneeId)) ||
+        (t.assigned_to_id === selectedAssigneeId) ||
+        (Array.isArray(t.assignees) && t.assignees.some((a) => a.id === selectedAssigneeId))
+      : true;
+    const matchesTag = selectedTag && selectedTag !== 'ALL'
+      ? Array.isArray(t.tags) && t.tags.includes(selectedTag)
+      : true;
     
-    return matchesProject && matchesSearch && matchesPriority;
+    return matchesProject && matchesSearch && matchesPriority && matchesAssignee && matchesTag;
   });
 
   // Dynamic Sorting
@@ -420,10 +670,60 @@ export default function Home() {
     return new Date(b.created_at || 0) - new Date(a.created_at || 0);
   });
 
-  const activeProject = projects.find((p) => p.id === activeProjectId);
+  const activeProject = safeProjects.find((p) => p.id === activeProjectId);
+  const activeAssignee = safeTeamUsers.find((u) => u.id === selectedAssigneeId);
+
+  // CSV Export Handler
+  const handleExportCSV = () => {
+    if (filteredTasks.length === 0) {
+      showToast('Nenhuma demanda encontrada para exportar', 'info');
+      return;
+    }
+
+    const headers = ['Título', 'Projeto', 'Prioridade', 'Status', 'Tags', 'Responsáveis', 'Prazo', 'Link PR/Commit', 'Descrição', 'Criado Em'];
+    
+    const rows = filteredTasks.map((t) => {
+      const proj = safeProjects.find((p) => p.id === t.project_id);
+      const assigneesStr = Array.isArray(t.assignees) && t.assignees.length > 0
+        ? t.assignees.map((a) => a.name).join('; ')
+        : (t.assignee_name || 'Não atribuído');
+
+      const tagsStr = Array.isArray(t.tags) && t.tags.length > 0
+        ? t.tags.join(', ')
+        : '';
+
+      const clean = (text) => `"${(text || '').toString().replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+
+      return [
+        clean(t.title),
+        clean(proj?.name || 'Sem projeto'),
+        clean(t.priority),
+        clean(t.status),
+        clean(tagsStr),
+        clean(assigneesStr),
+        clean(t.due_date ? new Date(t.due_date).toLocaleDateString('pt-BR') : 'Sem prazo'),
+        clean(t.pr_url || ''),
+        clean(t.description || ''),
+        clean(t.created_at ? new Date(t.created_at).toLocaleString('pt-BR') : '')
+      ].join(';');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `todolabs_demandas_${today}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('✓ Arquivo CSV exportado com sucesso!', 'success');
+  };
 
   // Stats (computed from active project scope)
-  const projectTasks = tasks.filter((t) => (activeProjectId ? t.project_id === activeProjectId : true));
+  const projectTasks = safeTasks.filter((t) => (activeProjectId ? t.project_id === activeProjectId : true));
   const taskStats = {
     total: projectTasks.length,
     pending: projectTasks.filter((t) => ['IDEIAS_BACKLOG', 'EM_ANALISE', 'DESENVOLVENDO'].includes(t.status)).length,
@@ -432,16 +732,20 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#f8fafc] text-slate-800">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#f8fafc] dark:bg-[#0B1120] text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* Sidebar */}
       <Sidebar
-        projects={projects}
+        projects={projectsWithCounts}
         activeProjectId={activeProjectId}
         onSelectProject={(id) => setActiveProjectId(id)}
         onOpenNewProjectModal={handleOpenNewProjectModal}
         onEditProjectModal={handleOpenEditProjectModal}
-        teamUsers={teamUsers}
+        teamUsers={safeTeamUsers}
+        selectedAssigneeId={selectedAssigneeId}
+        onSelectAssignee={setSelectedAssigneeId}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
         dbStatus={dbStatus}
       />
 
@@ -450,12 +754,22 @@ export default function Home() {
         {/* Header */}
         <Header
           activeProject={activeProject}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
+          selectedAssignee={activeAssignee}
+          onClearAssignee={() => setSelectedAssigneeId(null)}
+          selectedTag={selectedTag}
+          onSelectTag={setSelectedTag}
+          availableTags={availableTags}
+          onExportCSV={handleExportCSV}
+          onOpenActivityDrawer={() => {
+            fetchActivities();
+            setIsActivityDrawerOpen(true);
+          }}
           selectedPriority={selectedPriority}
           onPriorityChange={setSelectedPriority}
           sortBy={sortBy}
           onSortChange={setSortBy}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           onOpenNewTaskModal={handleOpenNewTaskModal}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           taskStats={taskStats}
@@ -464,12 +778,13 @@ export default function Home() {
         {/* Loading Spinner or Kanban Board */}
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center flex-col gap-3 text-slate-500">
-            <Loader2 className="w-8 h-8 animate-spin text-[#004C94]" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#004C94] dark:text-blue-400" />
             <span className="text-xs font-mono">Conectando ao Neon PostgreSQL...</span>
           </div>
         ) : (
           <KanbanBoard
             tasks={filteredTasks}
+            viewMode={viewMode}
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}
             onUpdateTaskStatus={handleUpdateTaskStatus}
@@ -524,6 +839,15 @@ export default function Home() {
         onOpenNewProjectModal={handleOpenNewProjectModal}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
         onEditTask={handleEditTask}
+      />
+
+      {/* Histórico / Drawer de Atividades */}
+      <ActivityDrawer
+        isOpen={isActivityDrawerOpen}
+        onClose={() => setIsActivityDrawerOpen(false)}
+        activities={activities}
+        isLoading={isLoadingActivities}
+        onRefresh={fetchActivities}
       />
 
       {/* Toast Notification Container */}

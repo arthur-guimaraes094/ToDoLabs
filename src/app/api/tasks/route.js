@@ -1,66 +1,91 @@
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
+import { 
+  isValidUUID, 
+  sanitizeSafeURL, 
+  sanitizeText, 
+  VALID_STATUSES, 
+  VALID_PRIORITIES 
+} from '@/lib/validation';
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('project_id');
 
-    let tasks;
-    if (projectId) {
-      tasks = await sql`
-        SELECT t.id, t.project_id, t.assigned_to_id, t.assignee_ids, t.title, t.description, 
-               t.status, t.priority, t.due_date, t.pr_url, t.created_at, t.updated_at,
-               u.name as assignee_name, u.avatar_url as assignee_avatar, u.role as assignee_role,
-               p.name as project_name
-        FROM tasks t
-        LEFT JOIN users u ON t.assigned_to_id = u.id
-        LEFT JOIN projects p ON t.project_id = p.id
-        WHERE t.project_id = ${projectId}::uuid
-        ORDER BY t.created_at DESC
-      `;
-    } else {
-      tasks = await sql`
-        SELECT t.id, t.project_id, t.assigned_to_id, t.assignee_ids, t.title, t.description, 
-               t.status, t.priority, t.due_date, t.pr_url, t.created_at, t.updated_at,
-               u.name as assignee_name, u.avatar_url as assignee_avatar, u.role as assignee_role,
-               p.name as project_name
-        FROM tasks t
-        LEFT JOIN users u ON t.assigned_to_id = u.id
-        LEFT JOIN projects p ON t.project_id = p.id
-        ORDER BY t.created_at DESC
-      `;
+    if (projectId && !isValidUUID(projectId)) {
+      return NextResponse.json({ error: 'project_id inválido' }, { status: 400 });
     }
 
-    // Fetch all users to map multi-assignees efficiently
-    const allUsers = await sql`SELECT id, name, avatar_url, role FROM users`;
-    const usersMap = new Map(allUsers.map((u) => [u.id, u]));
+    // Consulta otimizada com agregação direta dos desenvolvedores em PostgreSQL JSON e tags
+    const tasks = await sql`
+      SELECT 
+        t.id, 
+        t.project_id, 
+        t.assigned_to_id, 
+        t.assignee_ids, 
+        t.title, 
+        t.description, 
+        t.status, 
+        t.priority, 
+        t.due_date, 
+        t.pr_url, 
+        COALESCE(t.tags, '{}'::text[]) as tags,
+        t.created_at, 
+        t.updated_at,
+        p.name as project_name,
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', u.id,
+                'name', u.name,
+                'avatar_url', u.avatar_url,
+                'role', u.role
+              ) ORDER BY array_position(
+                CASE 
+                  WHEN t.assignee_ids IS NOT NULL AND cardinality(t.assignee_ids) > 0 THEN t.assignee_ids 
+                  ELSE ARRAY[t.assigned_to_id] 
+                END, 
+                u.id
+              )
+            )
+            FROM users u
+            WHERE u.id = ANY(
+              CASE 
+                WHEN t.assignee_ids IS NOT NULL AND cardinality(t.assignee_ids) > 0 THEN t.assignee_ids
+                WHEN t.assigned_to_id IS NOT NULL THEN ARRAY[t.assigned_to_id]
+                ELSE '{}'::uuid[]
+              END
+            )
+          ),
+          '[]'::json
+        ) as assignees
+      FROM tasks t
+      LEFT JOIN projects p ON t.project_id = p.id
+      ${projectId ? sql`WHERE t.project_id = ${projectId}::uuid` : sql``}
+      ORDER BY t.created_at DESC
+    `;
 
+    // Normaliza compatibilidade para campos legados se necessário
     const enrichedTasks = tasks.map((t) => {
-      let assignees = [];
-      const ids = Array.isArray(t.assignee_ids) && t.assignee_ids.length > 0 
-        ? t.assignee_ids 
-        : (t.assigned_to_id ? [t.assigned_to_id] : []);
-
-      assignees = ids
-        .map((uid) => usersMap.get(uid))
-        .filter(Boolean);
-
+      const assignees = Array.isArray(t.assignees) ? t.assignees : [];
+      const tags = Array.isArray(t.tags) ? t.tags : [];
       return {
         ...t,
         assignees,
-        // Legacy single assignee fallback
-        assignee_name: assignees[0]?.name || t.assignee_name,
-        assignee_avatar: assignees[0]?.avatar_url || t.assignee_avatar,
-        assignee_role: assignees[0]?.role || t.assignee_role,
-        assignee_ids: ids
+        tags,
+        assignee_name: assignees[0]?.name || null,
+        assignee_avatar: assignees[0]?.avatar_url || null,
+        assignee_role: assignees[0]?.role || null,
+        assignee_ids: Array.isArray(t.assignee_ids) ? t.assignee_ids : (t.assigned_to_id ? [t.assigned_to_id] : [])
       };
     });
 
     return NextResponse.json(enrichedTasks);
   } catch (error) {
     console.error('Erro ao buscar tarefas:', error);
-    return NextResponse.json([]);
+    return NextResponse.json({ error: 'Falha ao consultar tarefas' }, { status: 500 });
   }
 }
 
@@ -76,38 +101,50 @@ export async function POST(request) {
       due_date, 
       assignee_ids = [], 
       assigned_to_id, 
-      pr_url 
+      pr_url,
+      tags = []
     } = body;
 
-    if (!project_id || !title) {
-      return NextResponse.json({ error: 'Projeto e Título são obrigatórios' }, { status: 400 });
+    const cleanTitle = sanitizeText(title, 250);
+    if (!project_id || !isValidUUID(project_id)) {
+      return NextResponse.json({ error: 'ID do projeto válido é obrigatório' }, { status: 400 });
+    }
+    if (!cleanTitle) {
+      return NextResponse.json({ error: 'Título da tarefa é obrigatório' }, { status: 400 });
     }
 
-    const taskStatus = status || 'IDEIAS_BACKLOG';
-    const taskPriority = priority || 'MEDIA';
-    const dueDate = due_date || null;
-    const prUrl = pr_url || null;
+    const taskStatus = VALID_STATUSES.includes(status) ? status : 'IDEIAS_BACKLOG';
+    const taskPriority = VALID_PRIORITIES.includes(priority) ? priority : 'MEDIA';
+    const cleanDesc = description ? sanitizeText(description, 3000) : '';
+    const safePrUrl = sanitizeSafeURL(pr_url);
+    const dueDate = due_date ? new Date(due_date).toISOString() : null;
 
-    // Normaliza os IDs de responsáveis
-    let cleanAssigneeIds = Array.isArray(assignee_ids) ? assignee_ids.filter(Boolean) : [];
-    if (cleanAssigneeIds.length === 0 && assigned_to_id) {
+    // Normaliza e valida os IDs de responsáveis
+    let cleanAssigneeIds = Array.isArray(assignee_ids) ? assignee_ids.filter(isValidUUID) : [];
+    if (cleanAssigneeIds.length === 0 && assigned_to_id && isValidUUID(assigned_to_id)) {
       cleanAssigneeIds = [assigned_to_id];
     }
     const primaryAssignedId = cleanAssigneeIds[0] || null;
 
+    // Normaliza e limpa as tags
+    const cleanTags = Array.isArray(tags) 
+      ? tags.map((t) => sanitizeText(t, 40)).filter(Boolean)
+      : [];
+
     const [newTask] = await sql`
       INSERT INTO tasks (
-        project_id, title, description, status, priority, due_date, assigned_to_id, assignee_ids, pr_url
+        project_id, title, description, status, priority, due_date, assigned_to_id, assignee_ids, pr_url, tags
       ) VALUES (
         ${project_id}::uuid, 
-        ${title}, 
-        ${description || ''}, 
+        ${cleanTitle}, 
+        ${cleanDesc}, 
         ${taskStatus}, 
         ${taskPriority}, 
         ${dueDate}, 
         ${primaryAssignedId ? sql`${primaryAssignedId}::uuid` : null}, 
         ${cleanAssigneeIds.length > 0 ? sql`${cleanAssigneeIds}::uuid[]` : sql`'{}'::uuid[]`}, 
-        ${prUrl}
+        ${safePrUrl},
+        ${cleanTags.length > 0 ? sql`${cleanTags}::text[]` : sql`'{}'::text[]`}
       )
       RETURNING *
     `;

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
+import { sanitizeText, VALID_ROLES } from '@/lib/validation';
 
 export async function GET() {
   try {
@@ -20,12 +21,12 @@ export async function POST(request) {
     const body = await request.json();
     const { name, email, avatar_url, role } = body;
 
-    if (!name || !email) {
-      return NextResponse.json({ error: 'Nome e Email são obrigatórios' }, { status: 400 });
-    }
+    const trimmedName = sanitizeText(name, 100);
+    const trimmedEmail = sanitizeText(email, 150).toLowerCase();
 
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedName = name.trim();
+    if (!trimmedName || !trimmedEmail || !trimmedEmail.includes('@')) {
+      return NextResponse.json({ error: 'Nome e E-mail válido são obrigatórios' }, { status: 400 });
+    }
 
     // Validação preventiva de e-mail duplicado
     const [existing] = await sql`
@@ -41,7 +42,7 @@ export async function POST(request) {
     }
 
     const defaultAvatar = avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(trimmedName)}`;
-    const userRole = role || 'DEV';
+    const userRole = VALID_ROLES.includes(role) ? role : 'DEV';
 
     const [newUser] = await sql`
       INSERT INTO users (name, email, avatar_url, role)

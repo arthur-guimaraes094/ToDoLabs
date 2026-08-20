@@ -35,7 +35,10 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: "#f8fafc",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B1120" }
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -45,13 +48,14 @@ export default function RootLayout({ children }) {
   return (
     <html 
       lang="pt-BR" 
+      suppressHydrationWarning
       className={`h-full antialiased ${outfit.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
     >
       <head>
         <meta charSet="UTF-8" />
         <link rel="preconnect" href="https://api.dicebear.com" />
       </head>
-      <body className="min-h-full flex flex-col bg-[#f8fafc] text-slate-800 font-sans selection:bg-[#F7941D] selection:text-white">
+      <body className="min-h-full flex flex-col bg-[#f8fafc] dark:bg-[#0B1120] text-slate-800 dark:text-slate-100 font-sans selection:bg-[#F7941D] selection:text-white transition-colors duration-200">
         {children}
       </body>
     </html>
