@@ -15,7 +15,8 @@ import {
   LayoutGrid,
   Download,
   History,
-  AlertTriangle
+  AlertTriangle,
+  Menu
 } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
@@ -36,6 +37,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function Header({ 
+  onOpenMobileSidebar,
   activeProject, 
   selectedAssignee = null,
   onClearAssignee,
@@ -67,34 +69,45 @@ export default function Header({
   ];
 
   return (
-    <header className="glass-panel border-b border-[#004C94]/15 dark:border-slate-800/80 px-6 py-3 flex flex-col gap-3 shrink-0 bg-white dark:bg-[#131C31] transition-colors duration-200">
-      {/* Top Row: Title, Filter Badges, Search & Primary Action */}
-      <div className="flex items-center justify-between">
-        {/* Active Project, Active Assignee & Active Tag Filter Badges */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2.5">
-            <Folder className="w-5 h-5 text-[#F7941D]" />
-            <h2 className="text-lg font-bold text-[#004C94] dark:text-white tracking-tight font-heading">
+    <header className="glass-panel border-b border-[#004C94]/15 dark:border-slate-800/80 px-4 sm:px-6 py-3 flex flex-col gap-2.5 shrink-0 bg-white dark:bg-[#131C31] transition-colors duration-200">
+      {/* Top Row: Mobile Hamburger, Project Title, Badges, Search & Primary Action */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Left: Mobile Menu Trigger + Project Info + Active Badges */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
+          {/* Hamburger Menu Button (Visible only on mobile < md) */}
+          <button
+            type="button"
+            onClick={onOpenMobileSidebar}
+            title="Abrir Menu Lateral"
+            aria-label="Abrir menu de projetos e equipe"
+            className="md:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 focus-visible:ring-2 focus-visible:ring-[#004C94] focus-visible:outline-none shrink-0"
+          >
+            <Menu className="w-5 h-5 text-[#004C94] dark:text-blue-400" aria-hidden="true" />
+          </button>
+
+          <div className="flex items-center gap-2 min-w-0">
+            <Folder className="w-4 h-4 sm:w-5 sm:h-5 text-[#F7941D] shrink-0" aria-hidden="true" />
+            <h2 className="text-base sm:text-lg font-bold text-[#004C94] dark:text-white tracking-tight font-heading truncate max-w-[150px] sm:max-w-[240px] md:max-w-none">
               {activeProject ? activeProject.name : 'Todos os Projetos'}
             </h2>
           </div>
 
           {activeProject?.description && (
-            <span className="hidden lg:inline-block text-xs text-slate-500 dark:text-slate-400 border-l border-slate-200 dark:border-slate-800 pl-3 max-w-xs truncate font-medium">
+            <span className="hidden xl:inline-block text-xs text-slate-500 dark:text-slate-400 border-l border-slate-200 dark:border-slate-800 pl-3 max-w-xs truncate font-medium">
               {activeProject.description}
             </span>
           )}
 
           {/* Active Assignee Filter Tag */}
           {selectedAssignee && (
-            <div className="flex items-center gap-2 px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 border border-[#004C94]/30 dark:border-blue-500/40 rounded-xl text-xs font-semibold text-[#004C94] dark:text-blue-300 shadow-2xs animate-in fade-in duration-150">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-blue-50 dark:bg-blue-950/60 border border-[#004C94]/30 dark:border-blue-500/40 rounded-xl text-xs font-semibold text-[#004C94] dark:text-blue-300 shadow-2xs animate-in fade-in duration-150 shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
                 src={selectedAssignee.avatar_url} 
                 alt={selectedAssignee.name}
-                className="w-4 h-4 rounded-full bg-white border border-slate-300 dark:border-slate-700"
+                className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-white border border-slate-300 dark:border-slate-700" 
               />
-              <span className="truncate max-w-[120px]">{selectedAssignee.name}</span>
+              <span className="truncate max-w-[90px] sm:max-w-[120px]">{selectedAssignee.name}</span>
               <button
                 type="button"
                 onClick={onClearAssignee}
@@ -109,7 +122,7 @@ export default function Header({
 
           {/* Active Tag Filter Indicator */}
           {selectedTag && selectedTag !== 'ALL' && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 border border-[#F7941D]/30 dark:border-amber-500/40 rounded-xl text-xs font-semibold text-[#d97706] dark:text-amber-300 shadow-2xs animate-in fade-in duration-150">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-amber-50 dark:bg-amber-950/60 border border-[#F7941D]/30 dark:border-amber-500/40 rounded-xl text-xs font-semibold text-[#d97706] dark:text-amber-300 shadow-2xs animate-in fade-in duration-150 shrink-0">
               <span className="font-mono">🏷️ {selectedTag}</span>
               <button
                 type="button"
@@ -125,9 +138,10 @@ export default function Header({
 
           {/* Active Overdue Filter Indicator */}
           {filterOverdueOnly && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 shadow-2xs animate-in fade-in duration-150">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 shadow-2xs animate-in fade-in duration-150 shrink-0">
               <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" aria-hidden="true" />
-              <span>Apenas Atrasadas (<strong className="tabular-nums font-mono">{overdueCount}</strong>)</span>
+              <span className="hidden sm:inline">Apenas Atrasadas (<strong className="tabular-nums font-mono">{overdueCount}</strong>)</span>
+              <span className="sm:hidden font-mono font-bold">{overdueCount} atrasadas</span>
               <button
                 type="button"
                 onClick={onToggleOverdueFilter}
@@ -141,8 +155,8 @@ export default function Header({
           )}
         </div>
 
-        {/* Search Bar, Activity Log, CSV Export & Action Button */}
-        <div className="flex items-center gap-2.5">
+        {/* Right: Search, Activity Log, CSV & Primary Action Button */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Command Palette Trigger Button */}
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -150,7 +164,7 @@ export default function Header({
             onClick={onOpenCommandPalette}
             title="Abrir Paleta de Comandos (Ctrl+K)"
             aria-label="Abrir Paleta de Comandos (Ctrl+K)"
-            className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+            className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl p-2 sm:px-3 sm:py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
           >
             <Search className="w-4 h-4 text-[#F7941D]" aria-hidden="true" />
             <span className="hidden sm:inline font-medium">Buscar...</span>
@@ -166,7 +180,7 @@ export default function Header({
             onClick={onOpenActivityDrawer}
             title="Ver Histórico de Atividades"
             aria-label="Ver Histórico de Atividades"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
           >
             <History className="w-4 h-4 text-[#004C94] dark:text-blue-400" aria-hidden="true" />
             <span className="hidden md:inline">Histórico</span>
@@ -179,7 +193,7 @@ export default function Header({
             onClick={onExportCSV}
             title="Exportar Demandas em CSV"
             aria-label="Exportar Demandas em CSV"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+            className="hidden sm:flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
           >
             <Download className="w-4 h-4 text-[#F7941D]" aria-hidden="true" />
             <span className="hidden lg:inline">CSV</span>
@@ -191,7 +205,7 @@ export default function Header({
             whileTap={{ scale: 0.97 }}
             onClick={() => onOpenNewTaskModal()}
             aria-label="Criar nova demanda"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#F7941D] via-[#e6830d] to-[#F7941D] hover:from-[#e07e0c] hover:to-[#f89e2f] text-slate-950 font-bold text-xs shadow-md shadow-[#F7941D]/20 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-[#F7941D] focus-visible:outline-none"
+            className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl bg-gradient-to-r from-[#F7941D] via-[#e6830d] to-[#F7941D] hover:from-[#e07e0c] hover:to-[#f89e2f] text-slate-950 font-bold text-xs shadow-md shadow-[#F7941D]/20 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-[#F7941D] focus-visible:outline-none shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[3] text-slate-950" aria-hidden="true" />
             <span className="hidden sm:inline">Nova Demanda</span>
@@ -199,13 +213,13 @@ export default function Header({
         </div>
       </div>
 
-      {/* Bottom Row: Completion Progress Bar, Tags Filter, Sorting & Priority Filters */}
-      <div className="flex flex-wrap items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2.5 gap-3">
-        {/* Progress Bar & Counters */}
-        <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400">
-          <div className="flex items-center gap-2">
+      {/* Sub Row: Progress Bar, Status Counts, View Mode & Filters (Scrollable on Mobile) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2 gap-2 sm:gap-3">
+        {/* Progress Bar & Counters with Horizontal Scroll */}
+        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar touch-pan-x pb-1 sm:pb-0 text-xs text-slate-600 dark:text-slate-400 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Progresso:</span>
-            <div className="w-24 sm:w-32 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300/50 dark:border-slate-700 relative">
+            <div className="w-20 sm:w-28 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300/50 dark:border-slate-700 relative">
               <motion.div 
                 className="h-full bg-gradient-to-r from-[#004C94] via-sky-500 to-[#F7941D]"
                 initial={{ width: 0 }}
@@ -216,14 +230,14 @@ export default function Header({
             <span className="font-mono text-[#d97706] dark:text-amber-400 font-bold text-xs tabular-nums">{completionPercentage}%</span>
           </div>
 
-          <div className="hidden lg:flex items-center gap-3 border-l border-slate-200 dark:border-slate-800 pl-4">
-            <span className="flex items-center gap-1 font-medium">
+          <div className="flex items-center gap-2.5 sm:gap-3 border-l border-slate-200 dark:border-slate-800 pl-3 shrink-0">
+            <span className="flex items-center gap-1 font-medium whitespace-nowrap text-[11px] sm:text-xs">
               <Clock className="w-3.5 h-3.5 text-[#d97706] dark:text-amber-400" aria-hidden="true" /> <strong className="text-slate-900 dark:text-slate-200 font-mono tabular-nums">{taskStats.pending}</strong> pendentes
             </span>
-            <span className="flex items-center gap-1 font-medium">
+            <span className="flex items-center gap-1 font-medium whitespace-nowrap text-[11px] sm:text-xs">
               <AlertCircle className="w-3.5 h-3.5 text-[#004C94] dark:text-blue-400" aria-hidden="true" /> <strong className="text-slate-900 dark:text-slate-200 font-mono tabular-nums">{taskStats.review}</strong> em revisão
             </span>
-            <span className="flex items-center gap-1 font-medium">
+            <span className="flex items-center gap-1 font-medium whitespace-nowrap text-[11px] sm:text-xs">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> <strong className="text-slate-900 dark:text-slate-200 font-mono tabular-nums">{taskStats.done}</strong> concluídas
             </span>
 
@@ -235,7 +249,7 @@ export default function Header({
                 title={filterOverdueOnly ? "Desmarcar filtro de atrasadas" : "Filtrar apenas demandas atrasadas"}
                 aria-label={filterOverdueOnly ? "Desmarcar filtro de atrasadas" : "Filtrar apenas demandas atrasadas"}
                 aria-pressed={filterOverdueOnly}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none ${
                   filterOverdueOnly
                     ? 'bg-rose-600 text-white border-rose-600 shadow-xs font-bold'
                     : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60'
@@ -249,9 +263,9 @@ export default function Header({
         </div>
 
         {/* Right Controls: View Mode, Tag Filter, Dynamic Sort & Priority Filter Pills */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar touch-pan-x pb-1 sm:pb-0 flex-nowrap sm:flex-wrap">
           {/* View Mode Toggle: Leque vs Grade */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs" role="group" aria-label="Modo de visualização dos cards">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs shrink-0" role="group" aria-label="Modo de visualização dos cards">
             <button
               type="button"
               onClick={() => onViewModeChange && onViewModeChange('fan')}
@@ -265,7 +279,7 @@ export default function Header({
               }`}
             >
               <Layers className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="hidden md:inline">Leque</span>
+              <span className="hidden sm:inline">Leque</span>
             </button>
             <button
               type="button"
@@ -280,36 +294,36 @@ export default function Header({
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="hidden md:inline">Grade</span>
+              <span className="hidden sm:inline">Grade</span>
             </button>
           </div>
 
           {/* Tag Filter Dropdown */}
           {availableTags.length > 0 && (
-            <div className="w-36 sm:w-40">
+            <div className="w-32 sm:w-36 shrink-0">
               <CustomSelect
                 id="filter-tag"
                 options={tagOptions}
                 value={selectedTag || 'ALL'}
                 onChange={(val) => onSelectTag && onSelectTag(val)}
-                placeholder="Filtrar por tag..."
+                placeholder="Filtrar tag..."
               />
             </div>
           )}
 
           {/* Sorting Dropdown */}
-          <div className="w-40 sm:w-48">
+          <div className="w-36 sm:w-44 shrink-0">
             <CustomSelect
               id="sort-tasks"
               options={SORT_OPTIONS}
               value={sortBy}
               onChange={onSortChange}
-              placeholder="Ordenar demandas..."
+              placeholder="Ordenar..."
             />
           </div>
 
           {/* Priority Filter Pills */}
-          <div className="hidden sm:flex items-center gap-1" role="group" aria-label="Filtro de prioridade">
+          <div className="hidden md:flex items-center gap-1 shrink-0" role="group" aria-label="Filtro de prioridade">
             <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 mr-0.5" aria-hidden="true" />
             {PRIORITIES.map((p) => {
               const isSelected = selectedPriority === p.key;

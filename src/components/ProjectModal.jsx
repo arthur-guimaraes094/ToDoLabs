@@ -54,10 +54,13 @@ function ProjectModalForm({ projectToEdit, onClose, onSave, onDelete }) {
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#131C31] w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-200">
+      <div className="bg-white dark:bg-[#131C31] w-full max-w-md rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 text-slate-800 dark:text-slate-200 pb-safe">
+        {/* Mobile Drag Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" aria-hidden="true" />
+
         <button
           onClick={onClose}
           aria-label="Fechar modal"
@@ -90,7 +93,7 @@ function ProjectModalForm({ projectToEdit, onClose, onSave, onDelete }) {
               placeholder="ex: Sistema Financeiro, Portal do Aluno..."
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 focus:border-[#004C94] dark:focus:border-blue-500 focus:ring-2 focus:ring-[#004C94]/20 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 dark:text-white transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 focus:border-[#004C94] dark:focus:border-blue-500 focus:ring-2 focus:ring-[#004C94]/20 rounded-xl px-3.5 py-2 text-base sm:text-xs font-semibold text-slate-900 dark:text-white transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -104,7 +107,7 @@ function ProjectModalForm({ projectToEdit, onClose, onSave, onDelete }) {
               placeholder="Descreva o escopo e objetivos do sistema..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 focus:border-[#004C94] dark:focus:border-blue-500 focus:ring-2 focus:ring-[#004C94]/20 rounded-xl p-3 text-xs font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
+              className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 focus:border-[#004C94] dark:focus:border-blue-500 focus:ring-2 focus:ring-[#004C94]/20 rounded-xl p-3 text-base sm:text-xs font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
             />
           </div>
 

@@ -65,7 +65,7 @@ function TeamUserForm({ userToEdit, onCancel, onSaveUser }) {
             placeholder="Ex: Arthur Soares"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500"
+            className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-base sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500"
           />
         </div>
 
@@ -80,7 +80,7 @@ function TeamUserForm({ userToEdit, onCancel, onSaveUser }) {
             placeholder="arthur@todolabs.dev"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500"
+            className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-base sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500"
           />
         </div>
       </div>
@@ -195,10 +195,13 @@ export default function TeamModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#131C31] w-full max-w-xl rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-200">
+      <div className="bg-white dark:bg-[#131C31] w-full max-w-xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 text-slate-800 dark:text-slate-200 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-safe">
+        {/* Mobile Drag Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" aria-hidden="true" />
+
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-[#004C94]/15 dark:bg-blue-900/40 border border-[#004C94]/30 dark:border-blue-800 flex items-center justify-center text-[#004C94] dark:text-blue-400">

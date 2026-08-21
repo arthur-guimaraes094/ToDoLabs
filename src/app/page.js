@@ -96,6 +96,9 @@ export default function Home() {
     onConfirm: () => {}
   });
 
+  // Mobile Drawer State
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
@@ -823,16 +826,24 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f8fafc] dark:bg-[#0B1120] text-slate-800 dark:text-slate-100 transition-colors duration-200">
-      {/* Sidebar */}
+      {/* Sidebar (Desktop Fixo + Mobile Drawer Off-Canvas) */}
       <Sidebar
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
         projects={projectsWithCounts}
         activeProjectId={activeProjectId}
-        onSelectProject={(id) => setActiveProjectId(id)}
+        onSelectProject={(id) => {
+          setActiveProjectId(id);
+          setIsMobileSidebarOpen(false);
+        }}
         onOpenNewProjectModal={handleOpenNewProjectModal}
         onEditProjectModal={handleOpenEditProjectModal}
         teamUsers={teamUsersWithCounts}
         selectedAssigneeId={selectedAssigneeId}
-        onSelectAssignee={setSelectedAssigneeId}
+        onSelectAssignee={(id) => {
+          setSelectedAssigneeId(id);
+          setIsMobileSidebarOpen(false);
+        }}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
         isDarkMode={isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
@@ -843,6 +854,7 @@ export default function Home() {
       <div className="flex-1 flex flex-col h-full min-w-0">
         {/* Header */}
         <Header
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           activeProject={activeProject}
           selectedAssignee={activeAssignee}
           onClearAssignee={() => setSelectedAssigneeId(null)}

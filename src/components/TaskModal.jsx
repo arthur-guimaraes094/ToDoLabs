@@ -125,11 +125,14 @@ function TaskModalForm({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#131C31] w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-200 max-h-[90vh] overflow-y-auto">
-        <div className="absolute top-4 right-4 flex items-center gap-1">
+      <div className="bg-white dark:bg-[#131C31] w-full max-w-lg rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 text-slate-800 dark:text-slate-200 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-safe">
+        {/* Mobile Drag Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" aria-hidden="true" />
+
+        <div className="absolute top-4 sm:top-4 right-4 flex items-center gap-1">
           {taskToEdit && (
             <button
               type="button"
@@ -174,7 +177,7 @@ function TaskModalForm({
               placeholder="Ex: Integrar webhook do gateway ou Ideia de novo relatório"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500 transition-colors"
+              className="w-full bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-base sm:text-sm text-slate-900 dark:white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500 transition-colors"
             />
           </div>
 
@@ -189,7 +192,7 @@ function TaskModalForm({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               style={{ fieldSizing: 'content' }}
-              className="w-full min-h-[76px] max-h-[220px] bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500 transition-colors resize-y leading-relaxed"
+              className="w-full min-h-[76px] max-h-[220px] bg-slate-50 dark:bg-[#1E293B] border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#004C94] dark:focus:border-blue-500 transition-colors resize-y leading-relaxed"
             />
           </div>
 

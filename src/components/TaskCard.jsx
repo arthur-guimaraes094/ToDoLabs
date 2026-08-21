@@ -236,7 +236,7 @@ export default function TaskCard({
         onDragEnd={handleDragEnd}
         onMouseMove={handleMouseMove}
         className={`relative transform-gpu ${
-          isFanMode ? 'w-64 sm:w-72 min-w-[240px]' : 'w-full min-w-0'
+          isFanMode ? 'w-[76vw] sm:w-72 min-w-[230px] max-w-[280px] sm:max-w-none' : 'w-full min-w-0'
         } h-[265px] rounded-2xl p-[1.5px] cursor-grab active:cursor-grabbing group select-none transition-shadow duration-150 ${
           isLocalDragging || isMoveMenuOpen
             ? 'shadow-2xl ring-2 ring-[#004C94]/40 dark:ring-blue-400/40'
@@ -259,15 +259,22 @@ export default function TaskCard({
         )}
 
         {/* Card Surface */}
-        <div className={`relative z-10 w-full h-full ${theme.cardBg} rounded-[14.5px] p-4 flex flex-col justify-between space-y-3`}>
+        <div 
+          onClick={() => {
+            if (!isLocalDragging && onEditTask) {
+              onEditTask(task);
+            }
+          }}
+          className={`relative z-10 w-full h-full ${theme.cardBg} rounded-[14.5px] p-4 flex flex-col justify-between space-y-3 cursor-pointer`}
+        >
           {/* Card Header: Priority Badge & Actions */}
           <div className="flex items-center justify-between">
             <span className={`text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full border font-bold ${theme.badge}`}>
               {task.priority || 'MEDIA'}
             </span>
 
-            {/* Actions: Move / Copy / Edit / Delete (Acessíveis por hover, foco e mantidos visíveis quando o menu está aberto) */}
-            <div className={`flex items-center gap-1 transition-opacity duration-150 ${isMoveMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}>
+            {/* Actions: Move / Copy / Edit / Delete (Visíveis por padrão no mobile touch e via hover/focus no desktop) */}
+            <div className={`flex items-center gap-0.5 sm:gap-1 transition-opacity duration-150 ${isMoveMenuOpen ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100'}`}>
               {/* Accessible Move Menu Button (WCAG 2.2 SC 2.5.7) */}
               <div className="relative">
                 <button
@@ -282,7 +289,7 @@ export default function TaskCard({
                   aria-label={`Mover demanda "${task.title}" para outra coluna`}
                   aria-haspopup="true"
                   aria-expanded={isMoveMenuOpen}
-                  className="p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+                  className="p-1.5 sm:p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none touch-manipulation"
                 >
                   <ArrowRightLeft className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
@@ -340,7 +347,7 @@ export default function TaskCard({
                 onClick={handleCopyTask}
                 title={isCopied ? "Copiado!" : "Copiar Referência da Demanda"}
                 aria-label="Copiar referência da demanda"
-                className="p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+                className="p-1.5 sm:p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none touch-manipulation"
               >
                 {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
               </button>
@@ -352,7 +359,7 @@ export default function TaskCard({
                 }}
                 title="Editar Tarefa"
                 aria-label="Editar tarefa"
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+                className="p-1.5 sm:p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none touch-manipulation"
               >
                 <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
@@ -364,7 +371,7 @@ export default function TaskCard({
                 }}
                 title="Excluir Tarefa"
                 aria-label="Excluir tarefa"
-                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none"
+                className="p-1.5 sm:p-1 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none touch-manipulation"
               >
                 <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
