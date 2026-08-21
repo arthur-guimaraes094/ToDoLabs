@@ -68,9 +68,16 @@ export default function KanbanColumn({
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [openMenuTaskId, setOpenMenuTaskId] = useState(null);
 
   const config = COLUMN_CONFIG[statusKey] || COLUMN_CONFIG.IDEIAS_BACKLOG;
   const isAnyDragging = Boolean(activeDraggingTaskId);
+
+  // Se houver um menu de atalho aberto, o hover fica travado no card correspondente
+  const activeMenuIndex = openMenuTaskId 
+    ? tasks.findIndex((t) => t.id === openMenuTaskId) 
+    : -1;
+  const effectiveHoveredIndex = activeMenuIndex !== -1 ? activeMenuIndex : hoveredIndex;
 
   return (
     <motion.div
@@ -78,10 +85,10 @@ export default function KanbanColumn({
       data-column-status={statusKey}
       id={`kanban-column-${statusKey}`}
       style={{
-        zIndex: isOriginColumn ? 50 : isTargetDrop ? 40 : 1
+        zIndex: isOriginColumn ? 50 : isTargetDrop ? 40 : openMenuTaskId ? 60 : 1
       }}
       className={`w-full flex flex-col rounded-2xl glass-panel p-4 border transition-all duration-150 relative ${
-        isOriginColumn || isAnyDragging ? 'overflow-visible' : 'overflow-hidden'
+        isOriginColumn || isAnyDragging || openMenuTaskId ? 'overflow-visible' : 'overflow-hidden'
       } ${
         isTargetDrop 
           ? 'border-[#004C94] dark:border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 ring-2 ring-[#004C94]/40 shadow-md' 
@@ -93,21 +100,24 @@ export default function KanbanColumn({
         <div className="flex items-center gap-3 pointer-events-auto">
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
+            aria-label={isCollapsed ? `Expandir categoria ${config.title}` : `Recolher categoria ${config.title}`}
+            aria-expanded={!isCollapsed}
             className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
             title={isCollapsed ? "Expandir Categoria" : "Recolher Categoria"}
           >
-            {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            {isCollapsed ? <ChevronDown className="w-4 h-4" aria-hidden="true" /> : <ChevronUp className="w-4 h-4" aria-hidden="true" />}
           </button>
           
           <div className="flex items-center gap-2.5">
             <span 
               className="w-3.5 h-3.5 rounded-full shadow-xs" 
               style={{ backgroundColor: config.color }} 
+              aria-hidden="true"
             />
             <h3 className="font-bold text-base text-slate-800 dark:text-white font-heading">{config.title}</h3>
           </div>
 
-          <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${config.badgeBg}`}>
+          <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border tabular-nums ${config.badgeBg}`}>
             {tasks.length} {tasks.length === 1 ? 'demanda' : 'demandas'}
           </span>
         </div>
@@ -116,9 +126,10 @@ export default function KanbanColumn({
         <div className="flex items-center gap-2 pointer-events-auto">
           <button
             onClick={() => onOpenNewTaskModal(statusKey)}
+            aria-label={`Adicionar nova demanda em ${config.title}`}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#004C94] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200/80 dark:border-blue-800 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
           >
-            <Plus className="w-3.5 h-3.5" /> Adicionar Demanda
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" /> Adicionar Demanda
           </button>
         </div>
       </div>
@@ -131,7 +142,7 @@ export default function KanbanColumn({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className={`pt-2 pb-2 ${isAnyDragging ? 'overflow-visible' : ''}`}
+            className={`pt-2 pb-2 ${isAnyDragging || openMenuTaskId ? 'overflow-visible' : ''}`}
           >
             {tasks.length === 0 ? (
               <motion.div 
@@ -204,7 +215,9 @@ export default function KanbanColumn({
             ) : (
               /* Fan (Leque) View Mode */
               <div 
-                onMouseLeave={() => setHoveredIndex(null)}
+                onMouseLeave={() => {
+                  if (!openMenuTaskId) setHoveredIndex(null);
+                }}
                 className={`overflow-y-visible pt-5 pb-5 px-3 flex items-center min-h-[300px] ${
                   isAnyDragging 
                     ? 'overflow-x-visible' 
@@ -218,8 +231,9 @@ export default function KanbanColumn({
                   <AnimatePresence>
                     {tasks.map((task, index) => {
                       const isDraggingThis = activeDraggingTaskId === task.id;
-                      const isShifted = hoveredIndex !== null && index > hoveredIndex && !isAnyDragging;
-                      const isCurrentHovered = hoveredIndex === index && !isAnyDragging;
+                      const isShifted = effectiveHoveredIndex !== null && index > effectiveHoveredIndex && !isAnyDragging;
+                      const isCurrentHovered = effectiveHoveredIndex === index && !isAnyDragging;
+                      const isMenuOpen = openMenuTaskId === task.id;
 
                       return (
                         <TaskCard
@@ -230,15 +244,22 @@ export default function KanbanColumn({
                           isShifted={isShifted}
                           isCurrentHovered={isCurrentHovered}
                           isDraggingActive={isDraggingThis}
-                          onCardMouseEnter={() => !isAnyDragging && setHoveredIndex(index)}
-                          onCardMouseLeave={() => !isAnyDragging && setHoveredIndex(null)}
+                          isMoveMenuOpen={isMenuOpen}
+                          onToggleMoveMenu={(open) => setOpenMenuTaskId(open ? task.id : null)}
+                          onCardMouseEnter={() => {
+                            if (!isAnyDragging && !openMenuTaskId) {
+                              setHoveredIndex(index);
+                            }
+                          }}
                           onDragStartCard={(taskId) => {
                             setHoveredIndex(null);
+                            setOpenMenuTaskId(null);
                             if (onDragStartCard) onDragStartCard(taskId);
                           }}
                           onDragOverColumn={onDragOverColumn}
                           onDragEndCard={() => {
                             setHoveredIndex(null);
+                            setOpenMenuTaskId(null);
                             if (onDragEndCard) onDragEndCard();
                           }}
                           onEditTask={onEditTask}

@@ -46,7 +46,9 @@ export default function KanbanBoard({
             isTargetDrop={isTargetColumn}
             activeDraggingTaskId={activeDraggingTaskId}
             onDragStartCard={(taskId) => setActiveDraggingTaskId(taskId)}
-            onDragOverColumn={(status) => setActiveDropStatus(status)}
+            onDragOverColumn={(status) => {
+              setActiveDropStatus((prev) => (prev === status ? prev : status));
+            }}
             onDragEndCard={() => {
               setActiveDraggingTaskId(null);
               setActiveDropStatus(null);
