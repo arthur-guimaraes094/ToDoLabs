@@ -6,8 +6,8 @@ if (!databaseUrl) {
   throw new Error('Configuração ausente: A variável de ambiente DATABASE_URL não foi definida.');
 }
 
-// Em ambiente de desenvolvimento ou sob proxy corporativo (ex: SENAC), desabilita a rejeição estrita de certificados intermediários
-if (process.env.NODE_ENV !== 'production' || process.env.ALLOW_INSECURE_TLS === 'true') {
+// Sob ambiente corporativo ou desenvolvimento local (fora da nuvem Vercel), desabilita rejeição de proxy SSL
+if (!process.env.VERCEL || process.env.NODE_ENV !== 'production' || process.env.ALLOW_INSECURE_TLS === 'true') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
 

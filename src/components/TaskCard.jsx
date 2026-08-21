@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   GitPullRequest, 
@@ -11,10 +11,20 @@ import {
   AlertTriangle,
   ShieldCheck,
   Copy,
-  Check
+  Check,
+  ArrowRightLeft
 } from 'lucide-react';
 import { getTagStyle } from '@/lib/tags';
 import { formatTaskShareText } from '@/lib/formatTask';
+
+const COLUMN_OPTIONS = [
+  { key: 'IDEIAS_BACKLOG', label: 'Ideias / Backlog' },
+  { key: 'EM_ANALISE', label: 'Em Análise' },
+  { key: 'DESENVOLVENDO', label: 'Desenvolvendo' },
+  { key: 'EM_REVISAO', label: 'Em Revisão' },
+  { key: 'CONCLUIDA', label: 'Concluída' },
+  { key: 'CANCELADA', label: 'Cancelada' }
+];
 
 const PRIORITY_THEMES = {
   URGENTE: {
@@ -75,6 +85,8 @@ export default function TaskCard({
   isShifted = false,
   isCurrentHovered = false,
   isDraggingActive = false,
+  isMoveMenuOpen = false,
+  onToggleMoveMenu,
   onCardMouseEnter,
   onCardMouseLeave,
   onDragStartCard,
@@ -85,13 +97,31 @@ export default function TaskCard({
   onUpdateTaskStatus,
   onCopyTask
 }) {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLocalDragging, setIsLocalDragging] = useState(false);
   const [showAssigneesTooltip, setShowAssigneesTooltip] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const lastTargetStatusRef = useRef(null);
 
   const theme = PRIORITY_THEMES[task.priority] || PRIORITY_THEMES.MEDIA;
+
+  // Fechar menu de movimentação ao pressionar Escape ou clicar fora
+  useEffect(() => {
+    if (!isMoveMenuOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onToggleMoveMenu) {
+        onToggleMoveMenu(false);
+      }
+    };
+    const handleClickOutside = () => {
+      if (onToggleMoveMenu) onToggleMoveMenu(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('click', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('click', handleClickOutside);
+    };
+  }, [isMoveMenuOpen, onToggleMoveMenu]);
 
   const handleCopyTask = (e) => {
     e.stopPropagation();
@@ -102,12 +132,13 @@ export default function TaskCard({
     if (onCopyTask) onCopyTask(task);
   };
 
+  // Performance Crítica: Atualiza variáveis CSS diretamente sem disparar re-render no React (zero jitter/flicker)
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setMousePosition({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
+    e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
   };
 
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'CONCLUIDA';
@@ -115,6 +146,7 @@ export default function TaskCard({
   const handleDragStart = () => {
     setIsLocalDragging(true);
     setShowAssigneesTooltip(false);
+    setIsMoveMenuOpen(false);
     lastTargetStatusRef.current = null;
     if (onDragStartCard) onDragStartCard(task.id);
   };
@@ -158,7 +190,6 @@ export default function TaskCard({
   return (
     // Outer Slot: Gerencia a posição relativa no leque, margem negativa e expansão em acordeão
     <motion.div
-      layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ 
         opacity: 1,
@@ -167,14 +198,15 @@ export default function TaskCard({
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ 
         type: "spring", 
-        stiffness: 350, 
-        damping: 28,
-        mass: 0.8
+        stiffness: 380, 
+        damping: 32,
+        mass: 0.7
       }}
+      onMouseEnter={onCardMouseEnter}
       style={{
-        zIndex: isLocalDragging ? 9999 : isCurrentHovered ? 40 : isFanMode ? index + 1 : 1
+        zIndex: isLocalDragging || isMoveMenuOpen ? 9999 : isCurrentHovered ? 40 : isFanMode ? index + 1 : 1
       }}
-      className={`relative ${
+      className={`relative transform-gpu will-change-transform ${
         isFanMode 
           ? 'shrink-0 -ml-28 sm:-ml-36 first:ml-0' 
           : 'w-full shrink-0 ml-0'
@@ -191,25 +223,23 @@ export default function TaskCard({
           cursor: "grabbing"
         }}
         animate={{
-          y: isCurrentHovered && !isLocalDragging ? -10 : 0,
-          scale: isCurrentHovered && !isLocalDragging ? 1.01 : 1
+          y: (isCurrentHovered || isMoveMenuOpen) && !isLocalDragging ? -10 : 0,
+          scale: (isCurrentHovered || isMoveMenuOpen) && !isLocalDragging ? 1.01 : 1
         }}
         transition={{ 
           type: "spring", 
-          stiffness: 400, 
-          damping: 28 
+          stiffness: 450, 
+          damping: 30 
         }}
         onDragStart={handleDragStart}
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
         onMouseMove={handleMouseMove}
-        onMouseEnter={onCardMouseEnter}
-        onMouseLeave={onCardMouseLeave}
-        className={`relative ${
+        className={`relative transform-gpu ${
           isFanMode ? 'w-64 sm:w-72 min-w-[240px]' : 'w-full min-w-0'
         } h-[265px] rounded-2xl p-[1.5px] cursor-grab active:cursor-grabbing group select-none transition-shadow duration-150 ${
-          isLocalDragging
-            ? 'shadow-2xl ring-2 ring-[#004C94]/40'
+          isLocalDragging || isMoveMenuOpen
+            ? 'shadow-2xl ring-2 ring-[#004C94]/40 dark:ring-blue-400/40'
             : isCurrentHovered 
             ? 'shadow-xl ring-1 ring-black/10 dark:ring-white/10' 
             : 'shadow-md hover:shadow-lg'
@@ -219,11 +249,11 @@ export default function TaskCard({
         <div className={`absolute inset-0 rounded-2xl ${theme.trackBorder} z-0`} />
 
         {/* Linear-Style Spotlight Border matching Priority Color in Stronger Vibrancy */}
-        {isCurrentHovered && !isLocalDragging && (
+        {(isCurrentHovered || isMoveMenuOpen) && !isLocalDragging && (
           <div
             className="pointer-events-none absolute inset-0 rounded-2xl z-0 transition-opacity duration-150"
             style={{
-              background: `radial-gradient(280px circle at ${mousePosition.x}px ${mousePosition.y}px, ${theme.spotlightBeam} 0%, ${theme.spotlightSecondary} 50%, transparent 85%)`
+              background: `radial-gradient(280px circle at var(--mouse-x, 120px) var(--mouse-y, 120px), ${theme.spotlightBeam} 0%, ${theme.spotlightSecondary} 50%, transparent 85%)`
             }}
           />
         )}
@@ -232,20 +262,87 @@ export default function TaskCard({
         <div className={`relative z-10 w-full h-full ${theme.cardBg} rounded-[14.5px] p-4 flex flex-col justify-between space-y-3`}>
           {/* Card Header: Priority Badge & Actions */}
           <div className="flex items-center justify-between">
-            <span className={`text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${theme.badge}`}>
+            <span className={`text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full border font-bold ${theme.badge}`}>
               {task.priority || 'MEDIA'}
             </span>
 
-            {/* Hover Actions: Edit / Delete */}
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {/* Actions: Move / Copy / Edit / Delete (Acessíveis por hover, foco e mantidos visíveis quando o menu está aberto) */}
+            <div className={`flex items-center gap-1 transition-opacity duration-150 ${isMoveMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}>
+              {/* Accessible Move Menu Button (WCAG 2.2 SC 2.5.7) */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onToggleMoveMenu) {
+                      onToggleMoveMenu(!isMoveMenuOpen);
+                    }
+                  }}
+                  title="Mover de Coluna (Atalho Acessível)"
+                  aria-label={`Mover demanda "${task.title}" para outra coluna`}
+                  aria-haspopup="true"
+                  aria-expanded={isMoveMenuOpen}
+                  className="p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+
+                {/* Move Popover Menu */}
+                <AnimatePresence>
+                  {isMoveMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                      transition={{ duration: 0.12 }}
+                      role="menu"
+                      aria-label="Selecionar coluna de destino"
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute right-0 top-7 z-50 w-44 p-1.5 rounded-xl bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 shadow-2xl space-y-0.5 text-left"
+                    >
+                      <div className="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 mb-1">
+                        Mover para...
+                      </div>
+                      {COLUMN_OPTIONS.map((col) => {
+                        const isCurrent = col.key === task.status;
+                        return (
+                          <button
+                            key={col.key}
+                            type="button"
+                            role="menuitem"
+                            disabled={isCurrent}
+                            onClick={() => {
+                              if (!isCurrent && onUpdateTaskStatus) {
+                                onUpdateTaskStatus(task.id, col.key);
+                              }
+                              if (onToggleMoveMenu) {
+                                onToggleMoveMenu(false);
+                              }
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer border border-transparent focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none ${
+                              isCurrent
+                                ? 'bg-blue-50/80 dark:bg-blue-950/60 text-[#004C94] dark:text-blue-400 opacity-60 cursor-default'
+                                : 'text-slate-700 dark:text-slate-200 hover:bg-blue-50 hover:text-[#004C94] dark:hover:bg-[#1E2E4A] dark:hover:text-blue-300 dark:hover:border-blue-700/50'
+                            }`}
+                          >
+                            <span>{col.label}</span>
+                            {isCurrent && <span className="text-[10px] font-mono font-bold">✓ Atual</span>}
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <button
                 type="button"
                 onClick={handleCopyTask}
                 title={isCopied ? "Copiado!" : "Copiar Referência da Demanda"}
-                aria-label="Copiar referência"
-                className="p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                aria-label="Copiar referência da demanda"
+                className="p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
               >
-                {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
               </button>
               <button
                 type="button"
@@ -255,9 +352,9 @@ export default function TaskCard({
                 }}
                 title="Editar Tarefa"
                 aria-label="Editar tarefa"
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
               >
-                <Edit3 className="w-3.5 h-3.5" />
+                <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -267,9 +364,9 @@ export default function TaskCard({
                 }}
                 title="Excluir Tarefa"
                 aria-label="Excluir tarefa"
-                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -295,13 +392,13 @@ export default function TaskCard({
                       key={idx}
                       className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border flex items-center gap-1 shadow-2xs ${tagStyle.color}`}
                     >
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: tagStyle.dot }} />
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: tagStyle.dot }} aria-hidden="true" />
                       <span className="truncate max-w-[85px]">{tag}</span>
                     </span>
                   );
                 })}
                 {task.tags.length > 3 && (
-                  <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500 font-bold px-1">
+                  <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500 font-bold px-1 tabular-nums">
                     +{task.tags.length - 3}
                   </span>
                 )}
@@ -316,9 +413,10 @@ export default function TaskCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-[#004C94] dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 text-xs transition-colors w-fit font-medium"
+              aria-label="Abrir Pull Request ou Commit associado"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-[#004C94] dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 text-xs transition-colors w-fit font-medium focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
             >
-              <GitPullRequest className="w-3.5 h-3.5 text-[#004C94] dark:text-blue-400" />
+              <GitPullRequest className="w-3.5 h-3.5 text-[#004C94] dark:text-blue-400" aria-hidden="true" />
               <span className="font-mono text-[11px] truncate max-w-[120px]">PR / Commit</span>
             </a>
           )}
@@ -328,8 +426,8 @@ export default function TaskCard({
             {/* Soft Deadline */}
             {task.due_date ? (
               <div className={`flex items-center gap-1 text-[11px] font-medium ${isOverdue ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-slate-600 dark:text-slate-400'}`}>
-                {isOverdue ? <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 animate-pulse" /> : <Calendar className="w-3 h-3 text-slate-400" />}
-                <span>{new Date(task.due_date).toLocaleDateString('pt-BR')}</span>
+                {isOverdue ? <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 animate-pulse" aria-hidden="true" /> : <Calendar className="w-3 h-3 text-slate-400" aria-hidden="true" />}
+                <span className="tabular-nums">{new Date(task.due_date).toLocaleDateString('pt-BR')}</span>
               </div>
             ) : (
               <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">Sem prazo</span>
@@ -353,7 +451,7 @@ export default function TaskCard({
                     />
                   ))}
                   {assigneesList.length > 3 && (
-                    <span className="w-6 h-6 rounded-full bg-slate-800 dark:bg-slate-700 text-white text-[9px] font-mono font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-800">
+                    <span className="w-6 h-6 rounded-full bg-slate-800 dark:bg-slate-700 text-white text-[9px] font-mono font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-800 tabular-nums">
                       +{assigneesList.length - 3}
                     </span>
                   )}
@@ -363,7 +461,7 @@ export default function TaskCard({
                   title="Sem dev atribuído"
                   className="w-6 h-6 rounded-full bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 text-[10px] shrink-0"
                 >
-                  <User className="w-3 h-3" />
+                  <User className="w-3 h-3" aria-hidden="true" />
                 </div>
               )}
 

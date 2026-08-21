@@ -29,6 +29,8 @@ export default function Toast({ toast, onClose }) {
     <AnimatePresence>
       {toast && (
         <motion.div 
+          role="status"
+          aria-live="polite"
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -40,9 +42,10 @@ export default function Toast({ toast, onClose }) {
             <span className="text-xs font-bold flex-1">{toast.message}</span>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              aria-label="Fechar notificação"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-current focus-visible:outline-none"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
         </motion.div>
