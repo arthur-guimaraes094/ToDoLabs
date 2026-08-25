@@ -16,8 +16,10 @@ import {
 } from 'lucide-react';
 import { getTagStyle } from '@/lib/tags';
 import { formatTaskShareText } from '@/lib/formatTask';
+import { triggerHapticFeedback, HAPTIC_PRESETS } from '@/lib/haptics';
 
 const COLUMN_OPTIONS = [
+
   { key: 'IDEIAS_BACKLOG', label: 'Ideias / Backlog' },
   { key: 'EM_ANALISE', label: 'Em Análise' },
   { key: 'DESENVOLVENDO', label: 'Desenvolvendo' },
@@ -78,7 +80,7 @@ function findColumnAtPoint(pointX, pointY) {
   return null;
 }
 
-export default function TaskCard({ 
+function TaskCard({ 
   task, 
   index = 0,
   viewMode = 'fan',
@@ -128,6 +130,7 @@ export default function TaskCard({
     const textToCopy = formatTaskShareText(task);
     navigator.clipboard?.writeText(textToCopy);
     setIsCopied(true);
+    triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
     setTimeout(() => setIsCopied(false), 1800);
     if (onCopyTask) onCopyTask(task);
   };
@@ -146,8 +149,9 @@ export default function TaskCard({
   const handleDragStart = () => {
     setIsLocalDragging(true);
     setShowAssigneesTooltip(false);
-    setIsMoveMenuOpen(false);
+    if (onToggleMoveMenu && isMoveMenuOpen) onToggleMoveMenu(false);
     lastTargetStatusRef.current = null;
+    triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
     if (onDragStartCard) onDragStartCard(task.id);
   };
 
@@ -175,6 +179,7 @@ export default function TaskCard({
     if (onDragEndCard) onDragEndCard();
 
     if (targetStatus && targetStatus !== task.status && onUpdateTaskStatus) {
+      triggerHapticFeedback(targetStatus === 'CONCLUIDA' ? HAPTIC_PRESETS.SUCCESS : HAPTIC_PRESETS.MEDIUM);
       onUpdateTaskStatus(task.id, targetStatus);
     }
     lastTargetStatusRef.current = null;
@@ -186,6 +191,7 @@ export default function TaskCard({
     : (task.assignee_avatar ? [{ id: task.assigned_to_id, name: task.assignee_name, avatar_url: task.assignee_avatar, role: task.assignee_role }] : []);
 
   const isFanMode = viewMode === 'fan';
+  const isInteracting = isLocalDragging || isCurrentHovered || isMoveMenuOpen;
 
   return (
     // Outer Slot: Gerencia a posição relativa no leque, margem negativa e expansão em acordeão
@@ -198,15 +204,15 @@ export default function TaskCard({
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ 
         type: "spring", 
-        stiffness: 380, 
-        damping: 32,
-        mass: 0.7
+        stiffness: 400, 
+        damping: 34,
+        mass: 0.6
       }}
       onMouseEnter={onCardMouseEnter}
       style={{
         zIndex: isLocalDragging || isMoveMenuOpen ? 9999 : isCurrentHovered ? 40 : isFanMode ? index + 1 : 1
       }}
-      className={`relative transform-gpu will-change-transform ${
+      className={`relative ${isInteracting ? 'transform-gpu will-change-transform' : ''} ${
         isFanMode 
           ? 'shrink-0 -ml-28 sm:-ml-36 first:ml-0' 
           : 'w-full shrink-0 ml-0'
@@ -215,6 +221,7 @@ export default function TaskCard({
       {/* Inner Card: Objeto físico real com Arraste Livre, Hover Lift e Spotlight */}
       <motion.div
         drag
+        dragMomentum={false}
         dragSnapToOrigin={true}
         dragElastic={0.12}
         whileDrag={{ 
@@ -235,7 +242,7 @@ export default function TaskCard({
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
         onMouseMove={handleMouseMove}
-        className={`relative transform-gpu ${
+        className={`relative ${isInteracting ? 'transform-gpu will-change-transform' : ''} ${
           isFanMode ? 'w-[76vw] sm:w-72 min-w-[230px] max-w-[280px] sm:max-w-none' : 'w-full min-w-0'
         } h-[265px] rounded-2xl p-[1.5px] cursor-grab active:cursor-grabbing group select-none transition-shadow duration-150 ${
           isLocalDragging || isMoveMenuOpen
@@ -533,3 +540,26 @@ export default function TaskCard({
     </motion.div>
   );
 }
+
+export default React.memo(TaskCard, (prevProps, nextProps) => {
+  // Evita re-render se o estado relevante do card não mudou
+  return (
+    prevProps.isShifted === nextProps.isShifted &&
+    prevProps.isCurrentHovered === nextProps.isCurrentHovered &&
+    prevProps.isDraggingActive === nextProps.isDraggingActive &&
+    prevProps.isMoveMenuOpen === nextProps.isMoveMenuOpen &&
+    prevProps.viewMode === nextProps.viewMode &&
+    prevProps.index === nextProps.index &&
+    prevProps.task.id === nextProps.task.id &&
+    prevProps.task.title === nextProps.task.title &&
+    prevProps.task.description === nextProps.task.description &&
+    prevProps.task.status === nextProps.task.status &&
+    prevProps.task.priority === nextProps.task.priority &&
+    prevProps.task.due_date === nextProps.task.due_date &&
+    prevProps.task.pr_url === nextProps.task.pr_url &&
+    prevProps.task.updated_at === nextProps.task.updated_at &&
+    prevProps.task.tags === nextProps.task.tags &&
+    prevProps.task.assignees === nextProps.task.assignees
+  );
+});
+

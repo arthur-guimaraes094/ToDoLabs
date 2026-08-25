@@ -69,9 +69,9 @@ export default function Header({
   ];
 
   return (
-    <header className="glass-panel border-b border-[#004C94]/15 dark:border-slate-800/80 px-4 sm:px-6 py-3 flex flex-col gap-2.5 shrink-0 bg-white dark:bg-[#131C31] transition-colors duration-200">
+    <header className="glass-panel border-b border-[#004C94]/15 dark:border-slate-800/80 px-4 sm:px-6 py-3 flex flex-col gap-2.5 shrink-0 bg-white dark:bg-[#131C31] transition-colors duration-200 relative z-30 overflow-visible">
       {/* Top Row: Mobile Hamburger, Project Title, Badges, Search & Primary Action */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 relative z-10">
         {/* Left: Mobile Menu Trigger + Project Info + Active Badges */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
           {/* Hamburger Menu Button (Visible only on mobile < md) */}
@@ -213,13 +213,13 @@ export default function Header({
         </div>
       </div>
 
-      {/* Sub Row: Progress Bar, Status Counts, View Mode & Filters (Scrollable on Mobile) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2 gap-2 sm:gap-3">
-        {/* Progress Bar & Counters with Horizontal Scroll */}
-        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar touch-pan-x pb-1 sm:pb-0 text-xs text-slate-600 dark:text-slate-400 shrink-0">
-          <div className="flex items-center gap-2 shrink-0">
+      {/* Bottom Row: Completion Progress Bar, Tags Filter, Sorting & Priority Filters */}
+      <div className="flex flex-wrap items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-2.5 gap-3 relative z-20 overflow-visible">
+        {/* Progress Bar & Counters */}
+        <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400">
+          <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Progresso:</span>
-            <div className="w-20 sm:w-28 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300/50 dark:border-slate-700 relative">
+            <div className="w-24 sm:w-32 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300/50 dark:border-slate-700 relative">
               <motion.div 
                 className="h-full bg-gradient-to-r from-[#004C94] via-sky-500 to-[#F7941D]"
                 initial={{ width: 0 }}
@@ -230,14 +230,14 @@ export default function Header({
             <span className="font-mono text-[#d97706] dark:text-amber-400 font-bold text-xs tabular-nums">{completionPercentage}%</span>
           </div>
 
-          <div className="flex items-center gap-2.5 sm:gap-3 border-l border-slate-200 dark:border-slate-800 pl-3 shrink-0">
-            <span className="flex items-center gap-1 font-medium whitespace-nowrap text-[11px] sm:text-xs">
+          <div className="hidden lg:flex items-center gap-3 border-l border-slate-200 dark:border-slate-800 pl-4">
+            <span className="flex items-center gap-1 font-medium">
               <Clock className="w-3.5 h-3.5 text-[#d97706] dark:text-amber-400" aria-hidden="true" /> <strong className="text-slate-900 dark:text-slate-200 font-mono tabular-nums">{taskStats.pending}</strong> pendentes
             </span>
-            <span className="flex items-center gap-1 font-medium whitespace-nowrap text-[11px] sm:text-xs">
+            <span className="flex items-center gap-1 font-medium">
               <AlertCircle className="w-3.5 h-3.5 text-[#004C94] dark:text-blue-400" aria-hidden="true" /> <strong className="text-slate-900 dark:text-slate-200 font-mono tabular-nums">{taskStats.review}</strong> em revisão
             </span>
-            <span className="flex items-center gap-1 font-medium whitespace-nowrap text-[11px] sm:text-xs">
+            <span className="flex items-center gap-1 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> <strong className="text-slate-900 dark:text-slate-200 font-mono tabular-nums">{taskStats.done}</strong> concluídas
             </span>
 
@@ -249,7 +249,7 @@ export default function Header({
                 title={filterOverdueOnly ? "Desmarcar filtro de atrasadas" : "Filtrar apenas demandas atrasadas"}
                 aria-label={filterOverdueOnly ? "Desmarcar filtro de atrasadas" : "Filtrar apenas demandas atrasadas"}
                 aria-pressed={filterOverdueOnly}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none ${
                   filterOverdueOnly
                     ? 'bg-rose-600 text-white border-rose-600 shadow-xs font-bold'
                     : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60'
@@ -263,9 +263,9 @@ export default function Header({
         </div>
 
         {/* Right Controls: View Mode, Tag Filter, Dynamic Sort & Priority Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar touch-pan-x pb-1 sm:pb-0 flex-nowrap sm:flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap relative z-30 overflow-visible">
           {/* View Mode Toggle: Leque vs Grade */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs shrink-0" role="group" aria-label="Modo de visualização dos cards">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs" role="group" aria-label="Modo de visualização dos cards">
             <button
               type="button"
               onClick={() => onViewModeChange && onViewModeChange('fan')}
@@ -279,7 +279,7 @@ export default function Header({
               }`}
             >
               <Layers className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Leque</span>
+              <span className="hidden md:inline">Leque</span>
             </button>
             <button
               type="button"
@@ -294,36 +294,36 @@ export default function Header({
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Grade</span>
+              <span className="hidden md:inline">Grade</span>
             </button>
           </div>
 
           {/* Tag Filter Dropdown */}
           {availableTags.length > 0 && (
-            <div className="w-32 sm:w-36 shrink-0">
+            <div className="w-36 sm:w-40">
               <CustomSelect
                 id="filter-tag"
                 options={tagOptions}
                 value={selectedTag || 'ALL'}
                 onChange={(val) => onSelectTag && onSelectTag(val)}
-                placeholder="Filtrar tag..."
+                placeholder="Filtrar por tag..."
               />
             </div>
           )}
 
           {/* Sorting Dropdown */}
-          <div className="w-36 sm:w-44 shrink-0">
+          <div className="w-40 sm:w-48">
             <CustomSelect
               id="sort-tasks"
               options={SORT_OPTIONS}
               value={sortBy}
               onChange={onSortChange}
-              placeholder="Ordenar..."
+              placeholder="Ordenar demandas..."
             />
           </div>
 
           {/* Priority Filter Pills */}
-          <div className="hidden md:flex items-center gap-1 shrink-0" role="group" aria-label="Filtro de prioridade">
+          <div className="hidden sm:flex items-center gap-1" role="group" aria-label="Filtro de prioridade">
             <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 mr-0.5" aria-hidden="true" />
             {PRIORITIES.map((p) => {
               const isSelected = selectedPriority === p.key;

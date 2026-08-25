@@ -72,18 +72,18 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'ID do usuário não fornecido ou inválido' }, { status: 400 });
     }
 
-    // Desatribui tarefas associadas e remove o id do array multi-assignee para integridade total
-    await sql`
-      UPDATE tasks 
-      SET assigned_to_id = CASE WHEN assigned_to_id = ${id}::uuid THEN NULL ELSE assigned_to_id END,
-          assignee_ids = array_remove(COALESCE(assignee_ids, '{}'::uuid[]), ${id}::uuid)
-      WHERE assigned_to_id = ${id}::uuid OR ${id}::uuid = ANY(COALESCE(assignee_ids, '{}'::uuid[]))
-    `;
-
-    // Deleta o usuário
-    await sql`
-      DELETE FROM users WHERE id = ${id}::uuid
-    `;
+    // Desatribui tarefas associadas e deleta o usuário atomicamente (ACID transaction)
+    await sql.transaction([
+      sql`
+        UPDATE tasks 
+        SET assigned_to_id = CASE WHEN assigned_to_id = ${id}::uuid THEN NULL ELSE assigned_to_id END,
+            assignee_ids = array_remove(COALESCE(assignee_ids, '{}'::uuid[]), ${id}::uuid)
+        WHERE assigned_to_id = ${id}::uuid OR ${id}::uuid = ANY(COALESCE(assignee_ids, '{}'::uuid[]))
+      `,
+      sql`
+        DELETE FROM users WHERE id = ${id}::uuid
+      `
+    ]);
 
     return NextResponse.json({ success: true, id });
   } catch (error) {

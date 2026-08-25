@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
+import { triggerHapticFeedback, HAPTIC_PRESETS } from '@/lib/haptics';
 
 export default function ConfirmModal({ 
   isOpen, 
@@ -34,14 +35,25 @@ export default function ConfirmModal({
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           <motion.div 
+            drag="y"
+            dragDirectionLock
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.5 }}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 350) {
+                triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
+                onClose();
+              }
+            }}
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="bg-white dark:bg-[#131C31] w-full max-w-md rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative text-slate-800 dark:text-slate-200 pb-safe"
+            className="bg-white dark:bg-[#131C31] w-full max-w-md rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative text-slate-800 dark:text-slate-200 pb-safe touch-pan-y"
           >
             {/* Mobile Drag Handle */}
-            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" aria-hidden="true" />
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0 cursor-grab active:cursor-grabbing" aria-hidden="true" />
+
             <button
               onClick={onClose}
               aria-label="Fechar"

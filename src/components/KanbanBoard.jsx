@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import KanbanColumn from './KanbanColumn';
 
 const KANBAN_STATUSES = [
@@ -12,7 +12,7 @@ const KANBAN_STATUSES = [
   'CANCELADA'
 ];
 
-export default function KanbanBoard({ 
+function KanbanBoard({ 
   tasks = [], 
   viewMode = 'fan',
   onEditTask, 
@@ -28,6 +28,19 @@ export default function KanbanBoard({
   const activeOriginStatus = activeDraggingTaskId
     ? tasks.find((t) => t.id === activeDraggingTaskId)?.status
     : null;
+
+  const handleDragStartCard = useCallback((taskId) => {
+    setActiveDraggingTaskId(taskId);
+  }, []);
+
+  const handleDragOverColumn = useCallback((status) => {
+    setActiveDropStatus((prev) => (prev === status ? prev : status));
+  }, []);
+
+  const handleDragEndCard = useCallback(() => {
+    setActiveDraggingTaskId(null);
+    setActiveDropStatus(null);
+  }, []);
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5 w-full max-w-full">
@@ -45,14 +58,9 @@ export default function KanbanBoard({
             isOriginColumn={isOriginColumn}
             isTargetDrop={isTargetColumn}
             activeDraggingTaskId={activeDraggingTaskId}
-            onDragStartCard={(taskId) => setActiveDraggingTaskId(taskId)}
-            onDragOverColumn={(status) => {
-              setActiveDropStatus((prev) => (prev === status ? prev : status));
-            }}
-            onDragEndCard={() => {
-              setActiveDraggingTaskId(null);
-              setActiveDropStatus(null);
-            }}
+            onDragStartCard={handleDragStartCard}
+            onDragOverColumn={handleDragOverColumn}
+            onDragEndCard={handleDragEndCard}
             onEditTask={onEditTask}
             onDeleteTask={onDeleteTask}
             onUpdateTaskStatus={onUpdateTaskStatus}
@@ -64,3 +72,6 @@ export default function KanbanBoard({
     </div>
   );
 }
+
+export default React.memo(KanbanBoard);
+

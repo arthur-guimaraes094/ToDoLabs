@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { X, Layers, Palette, Trash2 } from 'lucide-react';
+import { triggerHapticFeedback, HAPTIC_PRESETS } from '@/lib/haptics';
 
 const PRESET_COLORS = [
   '#004C94', // Corporate Blue
@@ -31,6 +33,7 @@ function ProjectModalForm({ projectToEdit, onClose, onSave, onDelete }) {
         description: description.trim(),
         color_code: colorCode
       });
+      triggerHapticFeedback(HAPTIC_PRESETS.SUCCESS);
       onClose();
     } catch (err) {
       console.error(err);
@@ -44,6 +47,7 @@ function ProjectModalForm({ projectToEdit, onClose, onSave, onDelete }) {
     setIsSubmitting(true);
     try {
       await onDelete(projectToEdit.id);
+      triggerHapticFeedback(HAPTIC_PRESETS.DELETE);
       onClose();
     } catch (err) {
       console.error(err);
@@ -57,9 +61,21 @@ function ProjectModalForm({ projectToEdit, onClose, onSave, onDelete }) {
       className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#131C31] w-full max-w-md rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 text-slate-800 dark:text-slate-200 pb-safe">
+      <motion.div 
+        drag="y"
+        dragDirectionLock
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.5 }}
+        onDragEnd={(e, info) => {
+          if (info.offset.y > 100 || info.velocity.y > 350) {
+            triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
+            onClose();
+          }
+        }}
+        className="bg-white dark:bg-[#131C31] w-full max-w-md rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative text-slate-800 dark:text-slate-200 pb-safe touch-pan-y"
+      >
         {/* Mobile Drag Handle */}
-        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" aria-hidden="true" />
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0 cursor-grab active:cursor-grabbing" aria-hidden="true" />
 
         <button
           onClick={onClose}
@@ -160,7 +176,7 @@ function ProjectModalForm({ projectToEdit, onClose, onSave, onDelete }) {
             </div>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

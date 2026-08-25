@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { X, Users, Edit3, Trash2, Check, UserPlus } from 'lucide-react';
 import CustomSelect from './CustomSelect';
+import { triggerHapticFeedback, HAPTIC_PRESETS } from '@/lib/haptics';
 
 const AVATAR_OPTIONS = [
+
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Arthur',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Sam',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Lucas',
@@ -198,9 +201,21 @@ export default function TeamModal({
       className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#131C31] w-full max-w-xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 text-slate-800 dark:text-slate-200 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-safe">
+      <motion.div 
+        drag="y"
+        dragDirectionLock
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.5 }}
+        onDragEnd={(e, info) => {
+          if (info.offset.y > 100 || info.velocity.y > 350) {
+            triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
+            onClose();
+          }
+        }}
+        className="bg-white dark:bg-[#131C31] w-full max-w-xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative text-slate-800 dark:text-slate-200 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-safe touch-pan-y"
+      >
         {/* Mobile Drag Handle */}
-        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" aria-hidden="true" />
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0 cursor-grab active:cursor-grabbing" aria-hidden="true" />
 
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2.5">
@@ -240,7 +255,10 @@ export default function TeamModal({
               setIsEditing(false);
               setUserToEdit(null);
             }}
-            onSaveUser={onSaveUser}
+            onSaveUser={async (userData) => {
+              await onSaveUser(userData);
+              triggerHapticFeedback(HAPTIC_PRESETS.SUCCESS);
+            }}
           />
         ) : (
           <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
@@ -267,7 +285,10 @@ export default function TeamModal({
                     <Edit3 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => onDeleteUser(u.id)}
+                    onClick={() => {
+                      triggerHapticFeedback(HAPTIC_PRESETS.DELETE);
+                      onDeleteUser(u.id);
+                    }}
                     title="Remover Dev"
                     className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                   >
@@ -278,7 +299,7 @@ export default function TeamModal({
             ))}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

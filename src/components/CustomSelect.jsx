@@ -44,7 +44,7 @@ export default function CustomSelect({
   };
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${className} ${isOpen ? 'z-50' : 'z-10'}`}>
       {/* Select Trigger Button */}
       <button
         id={id}
@@ -77,7 +77,7 @@ export default function CustomSelect({
             animate={{ opacity: 1, y: 4, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-1 max-h-56 overflow-y-auto space-y-0.5"
+            className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-1 max-h-56 overflow-y-auto space-y-0.5 mt-1"
           >
             {options.map((option) => {
               const isSelected = String(option.value) === String(value);

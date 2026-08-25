@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { X, Sparkles, Check, Users, Tag, Plus, Copy } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 import CustomDatePicker from './CustomDatePicker';
 import { PRESET_TAGS, getTagStyle } from '@/lib/tags';
 import { formatTaskShareText } from '@/lib/formatTask';
+import { triggerHapticFeedback, HAPTIC_PRESETS } from '@/lib/haptics';
 
 const PRIORITY_OPTIONS = [
+
   { value: 'BAIXA', label: '🟢 Baixa' },
   { value: 'MEDIA', label: '🔵 Média' },
   { value: 'ALTA', label: '🟡 Alta' },
@@ -128,9 +131,22 @@ function TaskModalForm({
       className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white dark:bg-[#131C31] w-full max-w-lg rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 text-slate-800 dark:text-slate-200 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-safe">
+      <motion.div 
+        drag="y"
+        dragDirectionLock
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.5 }}
+        onDragEnd={(e, info) => {
+          if (info.offset.y > 100 || info.velocity.y > 350) {
+            triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
+            onClose();
+          }
+        }}
+        className="bg-white dark:bg-[#131C31] w-full max-w-lg rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 relative text-slate-800 dark:text-slate-200 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-safe touch-pan-y"
+      >
         {/* Mobile Drag Handle */}
-        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" aria-hidden="true" />
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0 cursor-grab active:cursor-grabbing" aria-hidden="true" />
+
 
         <div className="absolute top-4 sm:top-4 right-4 flex items-center gap-1">
           {taskToEdit && (
@@ -414,7 +430,7 @@ function TaskModalForm({
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

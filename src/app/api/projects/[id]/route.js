@@ -47,15 +47,11 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'ID do projeto inválido' }, { status: 400 });
     }
 
-    // Remove tarefas associadas primeiro
-    await sql`
-      DELETE FROM tasks WHERE project_id = ${id}::uuid
-    `;
-
-    // Remove o projeto
-    await sql`
-      DELETE FROM projects WHERE id = ${id}::uuid
-    `;
+    // Remove tarefas associadas e o projeto de forma atômica (ACID transaction)
+    await sql.transaction([
+      sql`DELETE FROM tasks WHERE project_id = ${id}::uuid`,
+      sql`DELETE FROM projects WHERE id = ${id}::uuid`
+    ]);
 
     return NextResponse.json({ success: true, id });
   } catch (error) {

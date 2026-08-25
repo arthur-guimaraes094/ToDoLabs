@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { sanitizeText } from '@/lib/validation';
+import { checkRateLimit } from '@/lib/ratelimit';
 
 export async function GET() {
   try {
@@ -21,6 +22,14 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const rateLimit = checkRateLimit(request, 60, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Muitas requisições. Por favor, aguarde alguns instantes.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { name, description, color_code } = body;
 
