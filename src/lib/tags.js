@@ -17,21 +17,36 @@ const FALLBACK_PALETTES = [
   { color: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-950/70 dark:text-cyan-300 dark:border-cyan-800/80', dot: '#0891b2' }
 ];
 
+const tagStyleCache = new Map();
+
 export function getTagStyle(tagName) {
   if (!tagName) return PRESET_TAGS[0];
 
-  const normalized = tagName.trim().toLowerCase();
+  const trimmed = tagName.trim();
+  const normalized = trimmed.toLowerCase();
+
+  if (tagStyleCache.has(normalized)) {
+    return tagStyleCache.get(normalized);
+  }
+
   const matched = PRESET_TAGS.find((p) => p.name.toLowerCase() === normalized);
-  if (matched) return matched;
+  if (matched) {
+    tagStyleCache.set(normalized, matched);
+    return matched;
+  }
 
   // Hash para tags customizadas
   let hash = 0;
-  for (let i = 0; i < tagName.length; i++) {
-    hash = tagName.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < trimmed.length; i++) {
+    hash = trimmed.charCodeAt(i) + ((hash << 5) - hash);
   }
   const index = Math.abs(hash) % FALLBACK_PALETTES.length;
-  return {
-    name: tagName,
+  const result = {
+    name: trimmed,
     ...FALLBACK_PALETTES[index]
   };
+
+  tagStyleCache.set(normalized, result);
+  return result;
 }
+

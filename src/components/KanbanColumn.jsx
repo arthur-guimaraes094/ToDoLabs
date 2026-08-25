@@ -50,7 +50,7 @@ const COLUMN_CONFIG = {
   }
 };
 
-export default function KanbanColumn({ 
+function KanbanColumn({ 
   statusKey, 
   tasks = [], 
   viewMode = 'fan',
@@ -248,7 +248,7 @@ export default function KanbanColumn({
                           onToggleMoveMenu={(open) => setOpenMenuTaskId(open ? task.id : null)}
                           onCardMouseEnter={() => {
                             if (!isAnyDragging && !openMenuTaskId) {
-                              setHoveredIndex(index);
+                              setHoveredIndex((prev) => (prev === index ? prev : index));
                             }
                           }}
                           onDragStartCard={(taskId) => {
@@ -279,3 +279,6 @@ export default function KanbanColumn({
     </motion.div>
   );
 }
+
+export default React.memo(KanbanColumn);
+

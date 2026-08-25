@@ -8,8 +8,10 @@ import KanbanBoard from '@/components/KanbanBoard';
 import KanbanSkeleton from '@/components/KanbanSkeleton';
 import Toast from '@/components/Toast';
 import { triggerCompletionConfetti } from '@/lib/confetti';
+import { triggerHapticFeedback, HAPTIC_PRESETS } from '@/lib/haptics';
 
 // Dynamic code-splitting para modais e painéis pesados (Vercel bundle optimization)
+
 const TaskModal = dynamic(() => import('@/components/TaskModal'), { ssr: false });
 const ProjectModal = dynamic(() => import('@/components/ProjectModal'), { ssr: false });
 const TeamModal = dynamic(() => import('@/components/TeamModal'), { ssr: false });
@@ -95,6 +97,9 @@ export default function Home() {
     message: '',
     onConfirm: () => {}
   });
+
+  // Mobile Drawer State
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -291,7 +296,7 @@ export default function Home() {
   }, []);
 
   // Reload helpers
-  const reloadTasks = async () => {
+  const reloadTasks = useCallback(async () => {
     try {
       const url = activeProjectId ? `/api/tasks?project_id=${activeProjectId}` : '/api/tasks';
       const res = await fetch(url);
@@ -302,9 +307,9 @@ export default function Home() {
     } catch (err) {
       console.error('Erro ao recarregar tarefas:', err);
     }
-  };
+  }, [activeProjectId]);
 
-  const reloadProjects = async () => {
+  const reloadProjects = useCallback(async () => {
     try {
       const res = await fetch('/api/projects');
       if (res.ok) {
@@ -314,9 +319,9 @@ export default function Home() {
     } catch (err) {
       console.error('Erro ao recarregar projetos:', err);
     }
-  };
+  }, []);
 
-  const reloadUsers = async () => {
+  const reloadUsers = useCallback(async () => {
     try {
       const res = await fetch('/api/users');
       if (res.ok) {
@@ -326,10 +331,10 @@ export default function Home() {
     } catch (err) {
       console.error('Erro ao recarregar time:', err);
     }
-  };
+  }, []);
 
   // --- Task CRUD ---
-  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+  const handleUpdateTaskStatus = useCallback(async (taskId, newStatus) => {
     const currentTask = tasks.find((t) => t.id === taskId);
     if (!currentTask || currentTask.status === newStatus) {
       return;
@@ -351,9 +356,12 @@ export default function Home() {
     const statusLabel = STATUS_LABELS[newStatus] || newStatus;
     showToast(`✓ Demanda movida para ${statusLabel}`, 'success');
 
-    // Se a demanda foi concluída, dispara o efeito de confetes comemorativos!
+    // Se a demanda foi concluída, dispara o efeito de confetes comemorativos e haptic de sucesso!
     if (newStatus === 'CONCLUIDA') {
       triggerCompletionConfetti();
+      triggerHapticFeedback(HAPTIC_PRESETS.SUCCESS);
+    } else {
+      triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
     }
 
     logActivity(
@@ -381,9 +389,9 @@ export default function Home() {
       showToast(err.message || 'Erro ao atualizar status da tarefa', 'error');
       reloadTasks();
     }
-  };
+  }, [tasks, reloadProjects, reloadTasks]);
 
-  const handleSaveTask = async (taskData) => {
+  const handleSaveTask = useCallback(async (taskData) => {
     try {
       if (taskData.id) {
         const oldTask = tasks.find((t) => t.id === taskData.id);
@@ -398,6 +406,9 @@ export default function Home() {
 
         if (taskData.status === 'CONCLUIDA' && oldTask?.status !== 'CONCLUIDA') {
           triggerCompletionConfetti();
+          triggerHapticFeedback(HAPTIC_PRESETS.SUCCESS);
+        } else {
+          triggerHapticFeedback(HAPTIC_PRESETS.MEDIUM);
         }
 
         logActivity(
@@ -418,6 +429,9 @@ export default function Home() {
 
         if (taskData.status === 'CONCLUIDA') {
           triggerCompletionConfetti();
+          triggerHapticFeedback(HAPTIC_PRESETS.SUCCESS);
+        } else {
+          triggerHapticFeedback(HAPTIC_PRESETS.SUCCESS);
         }
 
         logActivity(
@@ -435,15 +449,16 @@ export default function Home() {
       showToast(err.message || 'Erro ao salvar demanda', 'error');
       throw err;
     }
-  };
+  }, [tasks, reloadTasks, reloadProjects]);
 
-  const handleDeleteTask = (taskId) => {
+  const handleDeleteTask = useCallback((taskId) => {
     const taskToDelete = tasks.find((t) => t.id === taskId);
     askConfirmation(
       'Excluir Demanda',
       'Tem certeza que deseja excluir esta demanda permanentemente?',
       async () => {
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        triggerHapticFeedback(HAPTIC_PRESETS.DELETE);
         try {
           const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
           if (!res.ok) {
@@ -468,20 +483,20 @@ export default function Home() {
         }
       }
     );
-  };
+  }, [tasks, reloadProjects, reloadTasks]);
 
   // --- Project CRUD ---
-  const handleOpenNewProjectModal = () => {
+  const handleOpenNewProjectModal = useCallback(() => {
     setProjectToEdit(null);
     setIsProjectModalOpen(true);
-  };
+  }, []);
 
-  const handleOpenEditProjectModal = (proj) => {
+  const handleOpenEditProjectModal = useCallback((proj) => {
     setProjectToEdit(proj);
     setIsProjectModalOpen(true);
-  };
+  }, []);
 
-  const handleSaveProject = async (projectData) => {
+  const handleSaveProject = useCallback(async (projectData) => {
     try {
       if (projectData.id) {
         const res = await fetch(`/api/projects/${projectData.id}`, {
@@ -526,9 +541,9 @@ export default function Home() {
       showToast(err.message || 'Erro ao salvar projeto', 'error');
       throw err;
     }
-  };
+  }, [reloadProjects]);
 
-  const handleDeleteProject = (projectId) => {
+  const handleDeleteProject = useCallback((projectId) => {
     const proj = projects.find((p) => p.id === projectId);
     askConfirmation(
       `Excluir Projeto "${proj?.name || ''}"`,
@@ -561,10 +576,10 @@ export default function Home() {
         }
       }
     );
-  };
+  }, [projects, activeProjectId, reloadProjects, reloadTasks]);
 
   // --- User / Team CRUD ---
-  const handleSaveUser = async (userData) => {
+  const handleSaveUser = useCallback(async (userData) => {
     try {
       if (userData.id) {
         const res = await fetch(`/api/users/${userData.id}`, {
@@ -611,9 +626,9 @@ export default function Home() {
       showToast(err.message || 'Erro ao salvar desenvolvedor', 'error');
       throw err;
     }
-  };
+  }, [reloadUsers, reloadTasks]);
 
-  const handleDeleteUser = (userId) => {
+  const handleDeleteUser = useCallback((userId) => {
     const user = teamUsers.find((u) => u.id === userId);
     askConfirmation(
       `Remover "${user?.name || 'Dev'}" do Time`,
@@ -643,19 +658,20 @@ export default function Home() {
         }
       }
     );
-  };
+  }, [teamUsers, reloadUsers, reloadTasks]);
 
   // Open Modals
-  const handleOpenNewTaskModal = (status = 'IDEIAS_BACKLOG') => {
+  const handleOpenNewTaskModal = useCallback((status = 'IDEIAS_BACKLOG') => {
     setTaskToEdit(null);
     setInitialTaskStatus(status);
     setIsTaskModalOpen(true);
-  };
+  }, []);
 
-  const handleEditTask = (task) => {
+  const handleEditTask = useCallback((task) => {
     setTaskToEdit(task);
     setIsTaskModalOpen(true);
-  };
+  }, []);
+
 
   // Safe Array Wrappers com useMemo estáveis
   const safeTasks = useMemo(() => (Array.isArray(tasks) ? tasks : []), [tasks]);
@@ -759,12 +775,12 @@ export default function Home() {
     return safeTeamUsers.find((u) => u.id === selectedAssigneeId);
   }, [safeTeamUsers, selectedAssigneeId]);
 
-  const handleCopyTask = (task) => {
+  const handleCopyTask = useCallback((task) => {
     showToast(`✓ Referência de "${task.title?.slice(0, 30)}..." copiada!`, 'info');
-  };
+  }, []);
 
   // CSV Export Handler
-  const handleExportCSV = () => {
+  const handleExportCSV = useCallback(() => {
     if (filteredTasks.length === 0) {
       showToast('Nenhuma demanda encontrada para exportar', 'info');
       return;
@@ -810,7 +826,8 @@ export default function Home() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     showToast('✓ Arquivo CSV exportado com sucesso!', 'success');
-  };
+  }, [filteredTasks, safeProjects]);
+
 
   // Stats (computed from active project scope)
   const projectTasks = safeTasks.filter((t) => (activeProjectId ? t.project_id === activeProjectId : true));
@@ -823,16 +840,24 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f8fafc] dark:bg-[#0B1120] text-slate-800 dark:text-slate-100 transition-colors duration-200">
-      {/* Sidebar */}
+      {/* Sidebar (Desktop Fixo + Mobile Drawer Off-Canvas) */}
       <Sidebar
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
         projects={projectsWithCounts}
         activeProjectId={activeProjectId}
-        onSelectProject={(id) => setActiveProjectId(id)}
+        onSelectProject={(id) => {
+          setActiveProjectId(id);
+          setIsMobileSidebarOpen(false);
+        }}
         onOpenNewProjectModal={handleOpenNewProjectModal}
         onEditProjectModal={handleOpenEditProjectModal}
         teamUsers={teamUsersWithCounts}
         selectedAssigneeId={selectedAssigneeId}
-        onSelectAssignee={setSelectedAssigneeId}
+        onSelectAssignee={(id) => {
+          setSelectedAssigneeId(id);
+          setIsMobileSidebarOpen(false);
+        }}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
         isDarkMode={isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
@@ -843,6 +868,7 @@ export default function Home() {
       <div className="flex-1 flex flex-col h-full min-w-0">
         {/* Header */}
         <Header
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           activeProject={activeProject}
           selectedAssignee={activeAssignee}
           onClearAssignee={() => setSelectedAssigneeId(null)}

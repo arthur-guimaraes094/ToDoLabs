@@ -16,8 +16,10 @@ import {
 } from 'lucide-react';
 import { getTagStyle } from '@/lib/tags';
 import { formatTaskShareText } from '@/lib/formatTask';
+import { triggerHapticFeedback, HAPTIC_PRESETS } from '@/lib/haptics';
 
 const COLUMN_OPTIONS = [
+
   { key: 'IDEIAS_BACKLOG', label: 'Ideias / Backlog' },
   { key: 'EM_ANALISE', label: 'Em Análise' },
   { key: 'DESENVOLVENDO', label: 'Desenvolvendo' },
@@ -78,7 +80,7 @@ function findColumnAtPoint(pointX, pointY) {
   return null;
 }
 
-export default function TaskCard({ 
+function TaskCard({ 
   task, 
   index = 0,
   viewMode = 'fan',
@@ -128,6 +130,7 @@ export default function TaskCard({
     const textToCopy = formatTaskShareText(task);
     navigator.clipboard?.writeText(textToCopy);
     setIsCopied(true);
+    triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
     setTimeout(() => setIsCopied(false), 1800);
     if (onCopyTask) onCopyTask(task);
   };
@@ -146,8 +149,9 @@ export default function TaskCard({
   const handleDragStart = () => {
     setIsLocalDragging(true);
     setShowAssigneesTooltip(false);
-    setIsMoveMenuOpen(false);
+    if (onToggleMoveMenu && isMoveMenuOpen) onToggleMoveMenu(false);
     lastTargetStatusRef.current = null;
+    triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
     if (onDragStartCard) onDragStartCard(task.id);
   };
 
@@ -175,6 +179,7 @@ export default function TaskCard({
     if (onDragEndCard) onDragEndCard();
 
     if (targetStatus && targetStatus !== task.status && onUpdateTaskStatus) {
+      triggerHapticFeedback(targetStatus === 'CONCLUIDA' ? HAPTIC_PRESETS.SUCCESS : HAPTIC_PRESETS.MEDIUM);
       onUpdateTaskStatus(task.id, targetStatus);
     }
     lastTargetStatusRef.current = null;
@@ -186,6 +191,7 @@ export default function TaskCard({
     : (task.assignee_avatar ? [{ id: task.assigned_to_id, name: task.assignee_name, avatar_url: task.assignee_avatar, role: task.assignee_role }] : []);
 
   const isFanMode = viewMode === 'fan';
+  const isInteracting = isLocalDragging || isCurrentHovered || isMoveMenuOpen;
 
   return (
     // Outer Slot: Gerencia a posição relativa no leque, margem negativa e expansão em acordeão
@@ -198,15 +204,15 @@ export default function TaskCard({
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ 
         type: "spring", 
-        stiffness: 380, 
-        damping: 32,
-        mass: 0.7
+        stiffness: 400, 
+        damping: 34,
+        mass: 0.6
       }}
       onMouseEnter={onCardMouseEnter}
       style={{
         zIndex: isLocalDragging || isMoveMenuOpen ? 9999 : isCurrentHovered ? 40 : isFanMode ? index + 1 : 1
       }}
-      className={`relative transform-gpu will-change-transform ${
+      className={`relative ${isInteracting ? 'transform-gpu will-change-transform' : ''} ${
         isFanMode 
           ? 'shrink-0 -ml-28 sm:-ml-36 first:ml-0' 
           : 'w-full shrink-0 ml-0'
@@ -215,6 +221,7 @@ export default function TaskCard({
       {/* Inner Card: Objeto físico real com Arraste Livre, Hover Lift e Spotlight */}
       <motion.div
         drag
+        dragMomentum={false}
         dragSnapToOrigin={true}
         dragElastic={0.12}
         whileDrag={{ 
@@ -235,8 +242,8 @@ export default function TaskCard({
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
         onMouseMove={handleMouseMove}
-        className={`relative transform-gpu ${
-          isFanMode ? 'w-64 sm:w-72 min-w-[240px]' : 'w-full min-w-0'
+        className={`relative ${isInteracting ? 'transform-gpu will-change-transform' : ''} ${
+          isFanMode ? 'w-[76vw] sm:w-72 min-w-[230px] max-w-[280px] sm:max-w-none' : 'w-full min-w-0'
         } h-[265px] rounded-2xl p-[1.5px] cursor-grab active:cursor-grabbing group select-none transition-shadow duration-150 ${
           isLocalDragging || isMoveMenuOpen
             ? 'shadow-2xl ring-2 ring-[#004C94]/40 dark:ring-blue-400/40'
@@ -259,15 +266,22 @@ export default function TaskCard({
         )}
 
         {/* Card Surface */}
-        <div className={`relative z-10 w-full h-full ${theme.cardBg} rounded-[14.5px] p-4 flex flex-col justify-between space-y-3`}>
+        <div 
+          onClick={() => {
+            if (!isLocalDragging && onEditTask) {
+              onEditTask(task);
+            }
+          }}
+          className={`relative z-10 w-full h-full ${theme.cardBg} rounded-[14.5px] p-4 flex flex-col justify-between space-y-3 cursor-pointer`}
+        >
           {/* Card Header: Priority Badge & Actions */}
           <div className="flex items-center justify-between">
             <span className={`text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full border font-bold ${theme.badge}`}>
               {task.priority || 'MEDIA'}
             </span>
 
-            {/* Actions: Move / Copy / Edit / Delete (Acessíveis por hover, foco e mantidos visíveis quando o menu está aberto) */}
-            <div className={`flex items-center gap-1 transition-opacity duration-150 ${isMoveMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}>
+            {/* Actions: Move / Copy / Edit / Delete (Visíveis por padrão no mobile touch e via hover/focus no desktop) */}
+            <div className={`flex items-center gap-0.5 sm:gap-1 transition-opacity duration-150 ${isMoveMenuOpen ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100'}`}>
               {/* Accessible Move Menu Button (WCAG 2.2 SC 2.5.7) */}
               <div className="relative">
                 <button
@@ -282,7 +296,7 @@ export default function TaskCard({
                   aria-label={`Mover demanda "${task.title}" para outra coluna`}
                   aria-haspopup="true"
                   aria-expanded={isMoveMenuOpen}
-                  className="p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+                  className="p-1.5 sm:p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none touch-manipulation"
                 >
                   <ArrowRightLeft className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
@@ -340,7 +354,7 @@ export default function TaskCard({
                 onClick={handleCopyTask}
                 title={isCopied ? "Copiado!" : "Copiar Referência da Demanda"}
                 aria-label="Copiar referência da demanda"
-                className="p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+                className="p-1.5 sm:p-1 rounded-lg text-slate-400 hover:text-[#004C94] dark:hover:text-blue-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none touch-manipulation"
               >
                 {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
               </button>
@@ -352,7 +366,7 @@ export default function TaskCard({
                 }}
                 title="Editar Tarefa"
                 aria-label="Editar tarefa"
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none"
+                className="p-1.5 sm:p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#004C94] dark:focus-visible:ring-blue-400 focus-visible:outline-none touch-manipulation"
               >
                 <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
@@ -364,7 +378,7 @@ export default function TaskCard({
                 }}
                 title="Excluir Tarefa"
                 aria-label="Excluir tarefa"
-                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none"
+                className="p-1.5 sm:p-1 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white/80 dark:hover:bg-slate-700 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none touch-manipulation"
               >
                 <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
@@ -526,3 +540,26 @@ export default function TaskCard({
     </motion.div>
   );
 }
+
+export default React.memo(TaskCard, (prevProps, nextProps) => {
+  // Evita re-render se o estado relevante do card não mudou
+  return (
+    prevProps.isShifted === nextProps.isShifted &&
+    prevProps.isCurrentHovered === nextProps.isCurrentHovered &&
+    prevProps.isDraggingActive === nextProps.isDraggingActive &&
+    prevProps.isMoveMenuOpen === nextProps.isMoveMenuOpen &&
+    prevProps.viewMode === nextProps.viewMode &&
+    prevProps.index === nextProps.index &&
+    prevProps.task.id === nextProps.task.id &&
+    prevProps.task.title === nextProps.task.title &&
+    prevProps.task.description === nextProps.task.description &&
+    prevProps.task.status === nextProps.task.status &&
+    prevProps.task.priority === nextProps.task.priority &&
+    prevProps.task.due_date === nextProps.task.due_date &&
+    prevProps.task.pr_url === nextProps.task.pr_url &&
+    prevProps.task.updated_at === nextProps.task.updated_at &&
+    prevProps.task.tags === nextProps.task.tags &&
+    prevProps.task.assignees === nextProps.task.assignees
+  );
+});
+

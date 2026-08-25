@@ -20,13 +20,22 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata = {
-  title: "ToDoLabs - Gestão Ágil de Demandas",
-  description: "Sistema de gestão de atividades e fluxo de trabalho para equipes de engenharia de software.",
-  keywords: ["ToDoLabs", "Kanban", "Gestão de Atividades", "Dev", "Agile", "Next.js", "Neon PostgreSQL"],
+  title: "ToDoLabs",
+  description: "Sistema de gestão de atividades e fluxo de trabalho ágil para equipes de tecnologia.",
+  keywords: ["ToDoLabs", "Kanban", "Gestão de Atividades", "Dev", "Agile", "Next.js", "Neon PostgreSQL", "PWA"],
   authors: [{ name: "ToDoLabs Engineering" }],
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ToDoLabs"
+  },
+  formatDetection: {
+    telephone: false
+  },
   openGraph: {
-    title: "ToDoLabs - Gestão Ágil de Demandas",
-    description: "Sistema de gestão de atividades e fluxo de trabalho para equipes de engenharia de software.",
+    title: "ToDoLabs",
+    description: "Sistema de gestão de atividades e fluxo de trabalho ágil.",
     url: "http://localhost:3000",
     siteName: "ToDoLabs",
     locale: "pt_BR",
@@ -42,6 +51,7 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }) {

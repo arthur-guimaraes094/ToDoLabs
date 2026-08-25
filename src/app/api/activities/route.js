@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { sanitizeText } from '@/lib/validation';
+import { checkRateLimit } from '@/lib/ratelimit';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 100);
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0);
+
     const activities = await sql`
       SELECT id, action_type, description, entity_type, entity_id, metadata, created_at
       FROM activities
       ORDER BY created_at DESC
-      LIMIT 50;
+      LIMIT ${limit} OFFSET ${offset};
     `;
     return NextResponse.json(activities);
   } catch (error) {
@@ -22,6 +27,14 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const rateLimit = checkRateLimit(request, 90, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Muitas requisições. Aguarde alguns instantes.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { action_type, description, entity_type = 'SYSTEM', entity_id = null, metadata = {} } = body;
 

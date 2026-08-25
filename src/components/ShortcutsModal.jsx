@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Keyboard, X, Sparkles } from 'lucide-react';
+import { triggerHapticFeedback, HAPTIC_PRESETS } from '@/lib/haptics';
 
 const SHORTCUTS = [
   { key: 'N', desc: 'Criar nova demanda' },
@@ -20,16 +21,28 @@ export default function ShortcutsModal({ isOpen, onClose }) {
   return (
     <AnimatePresence>
       <div 
-        className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          drag="y"
+          dragDirectionLock
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.5 }}
+          onDragEnd={(e, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 350) {
+              triggerHapticFeedback(HAPTIC_PRESETS.LIGHT);
+              onClose();
+            }
+          }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.15 }}
-          className="bg-white dark:bg-[#131C31] w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-5 relative text-slate-800 dark:text-slate-200"
+          className="bg-white dark:bg-[#131C31] w-full max-w-md rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 relative text-slate-800 dark:text-slate-200 pb-safe touch-pan-y"
         >
+          {/* Mobile Drag Handle */}
+          <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0 cursor-grab active:cursor-grabbing" aria-hidden="true" />
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
